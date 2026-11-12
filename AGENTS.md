@@ -28,3 +28,9 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Pothole grouping and Brusque bounds are enforced in the `report_pothole` SQL function; keep `src/lib/potholes.ts` constants in sync (UI pre-checks only).
+- Admin access = `admin` row in `user_roles`, synced by triggers from the `admin_emails` allowlist; never grant roles from client code.
+- Photos live in the private `fotos` bucket (public buckets are blocked); admins view them via signed URLs.
+- Maps use Leaflet + OpenStreetMap tiles, loaded client-only via `LazyMap`.
