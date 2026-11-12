@@ -37,3 +37,4 @@ use the editor.
 - Mobile-first: safe-area utilities (safe-top/safe-bottom), 16px inputs (no iOS zoom), raster OSM fallback when WebGL is missing, photo upload falls back to original file when the device cannot shrink it.
 - Report flow: draggable mascot marker (PlacePanel + PotholeMap `placing`) → ReportSheet; addresses via Nominatim in `src/lib/geocode.ts`; public map polls and pauses polling while a citizen is placing/sending so the marker is never disturbed.
 - Photos go through `src/lib/photo.ts` (images only, HEIC→JPEG via lazy heic2any, small low-quality JPEG); photo failure never blocks the report.
+- Acessos: tabela site_visits gravada via serverFn trackVisit (host vindo dos headers); painel lê via RPC visit_stats (is_staff).

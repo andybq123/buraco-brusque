@@ -21,6 +21,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { VisitsPanel } from "@/components/VisitsPanel";
 import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -115,10 +116,14 @@ function AdminPage() {
         <Tabs defaultValue="buracos">
           <TabsList>
             <TabsTrigger value="buracos"><MapPin className="mr-1 h-4 w-4" /> Buracos</TabsTrigger>
+            <TabsTrigger value="acessos">Acessos</TabsTrigger>
             {isAdmin && <TabsTrigger value="usuarios"><Users className="mr-1 h-4 w-4" /> Usuários</TabsTrigger>}
           </TabsList>
           <TabsContent value="buracos" className="mt-4">
             <Potholes isAdmin={isAdmin} email={user.email ?? ""} />
+          </TabsContent>
+          <TabsContent value="acessos" className="mt-4">
+            <VisitsPanel />
           </TabsContent>
           {isAdmin && (
             <TabsContent value="usuarios" className="mt-4">

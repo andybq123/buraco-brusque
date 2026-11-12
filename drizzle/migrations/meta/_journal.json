@@ -50,6 +50,13 @@
       "when": 1794512626707,
       "tag": "0006_staff_view_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794513882815,
+      "tag": "0007_site_visits",
+      "breakpoints": true
     }
   ]
 }

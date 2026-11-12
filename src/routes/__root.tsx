@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { trackVisit } from "@/lib/visits.functions";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -140,6 +141,14 @@ function RootComponent() {
     });
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("dor_visit")) return;
+      sessionStorage.setItem("dor_visit", "1");
+    } catch {}
+    trackVisit({ data: { path: window.location.pathname, mobile: /Mobi|Android|iPhone/i.test(navigator.userAgent) } }).catch(() => {});
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

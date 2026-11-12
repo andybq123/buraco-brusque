@@ -83,6 +83,30 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visits: {
+        Row: {
+          created_at: string
+          device: string | null
+          host: string
+          id: number
+          path: string
+        }
+        Insert: {
+          created_at?: string
+          device?: string | null
+          host: string
+          id?: number
+          path: string
+        }
+        Update: {
+          created_at?: string
+          device?: string | null
+          host?: string
+          id?: number
+          path?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -125,6 +149,7 @@ export type Database = {
         }
         Returns: Json
       }
+      visit_stats: { Args: { _days: number }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "operador"
