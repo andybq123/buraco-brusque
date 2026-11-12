@@ -159,8 +159,9 @@ input, select, textarea { font-size: 16px !important; }
   background: var(--card); border: 3px solid var(--primary); box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
 }
 .pothole-pin img { width: 22px; height: 22px; }
-.pothole-pin--consertado { border-color: var(--success); background: var(--success); }
-.pothole-pin--consertado img { filter: grayscale(1) brightness(2); }
+.pothole-pin--consertado { width: 30px; height: 30px; margin: 3px; border: 3px solid var(--card); background: var(--success);
+  color: var(--success-foreground); box-shadow: 0 0 0 2px var(--success), 0 2px 6px rgb(0 0 0 / 0.35); }
+.pothole-pin--consertado svg { width: 16px; height: 16px; }
 .pothole-pin--removido { border-color: var(--muted-foreground); opacity: 0.6; }
 
 /* Bonequinho molengo */

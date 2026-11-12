@@ -71,7 +71,9 @@ function potholeIcon(status: string) {
   if (!ic) {
     ic = L.divIcon({
       className: "",
-      html: `<div class="pothole-pin pothole-pin--${status}"><img src="/favicon.png" alt="" /></div>`,
+      html: status === "consertado"
+        ? `<div class="pothole-pin pothole-pin--consertado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>`
+        : `<div class="pothole-pin pothole-pin--${status}"><img src="/favicon.png" alt="" /></div>`,
       iconSize: [36, 36],
       iconAnchor: [18, 18],
       popupAnchor: [0, -16],
