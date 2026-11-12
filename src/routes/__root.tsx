@@ -82,13 +82,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     // twitter:image here: every page without its own would inherit the root's preview image.
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Buraco Brusque" },
       { name: "description", content: "Mapa colaborativo de buracos nas ruas de Brusque." },
       { property: "og:title", content: "Buraco Brusque" },
       { property: "og:description", content: "Mapa colaborativo de buracos nas ruas de Brusque." },
       { name: "theme-color", content: "#ffd60a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "format-detection", content: "telephone=no" },
       { name: "apple-mobile-web-app-title", content: "Buraco Brusque" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

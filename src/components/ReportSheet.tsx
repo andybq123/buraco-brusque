@@ -7,11 +7,37 @@ import { supabase } from "@/integrations/supabase/client";
 import { distanceMeters, GROUP_RADIUS_M, isInsideBrusque } from "@/lib/potholes";
 
 type Geo = { lat: number; lng: number; accuracy: number };
+function uuid() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 const LAST_KEY = "bb_last_report";
 const COOLDOWN_MS = 10 * 60 * 1000;
 
+/** Reduz a foto; se o aparelho não conseguir (ex.: HEIC em alguns Android), devolve null. */
+async function loadImage(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
+  if ("createImageBitmap" in window) {
+    try {
+      return await createImageBitmap(file);
+    } catch {
+      /* tenta pelo <img> */
+    }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+    await img.decode();
+    return img;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
 async function compressImage(file: File): Promise<Blob> {
-  const img = await createImageBitmap(file);
+  const img = await loadImage(file);
   const max = 1280;
   const scale = Math.min(1, max / Math.max(img.width, img.height));
   const canvas = document.createElement("canvas");
@@ -60,7 +86,7 @@ export function ReportSheet({
             : "Não conseguimos pegar sua localização. Tente de novo ao ar livre.",
         );
       },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 10000 },
     );
   };
 
@@ -104,19 +130,28 @@ export function ReportSheet({
     try {
       let photoName: string | null = null;
       if (photo) {
-        const blob = await compressImage(photo);
-        photoName = `${crypto.randomUUID()}.jpg`;
-        const { error } = await supabase.storage
-          .from("fotos")
-          .upload(photoName, blob, { contentType: "image/jpeg" });
-        if (error) photoName = null;
+        let blob: Blob | null = null;
+        try {
+          blob = await compressImage(photo);
+        } catch {
+          // aparelho não conseguiu reduzir: envia original se for JPG/PNG/WEBP e até 8 MB
+          if (/^image\/(jpeg|png|webp)$/.test(photo.type) && photo.size <= 8 * 1024 * 1024) blob = photo;
+        }
+        if (blob) {
+          const ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+          photoName = `${uuid()}.${ext}`;
+          const { error } = await supabase.storage
+            .from("fotos")
+            .upload(photoName, blob, { contentType: blob.type || "image/jpeg" });
+          if (error) photoName = null;
+        }
       }
       const { data, error } = await supabase.rpc(
         "report_pothole",
         photoName ? { _lat: geo.lat, _lng: geo.lng, _photo: photoName } : { _lat: geo.lat, _lng: geo.lng },
       );
       if (error) throw error;
-      localStorage.setItem(LAST_KEY, JSON.stringify({ lat: geo.lat, lng: geo.lng, t: Date.now() }));
+      try { localStorage.setItem(LAST_KEY, JSON.stringify({ lat: geo.lat, lng: geo.lng, t: Date.now() })); } catch { /* modo privado */ }
       const grouped = (data as { grouped?: boolean } | null)?.grouped;
       toast.success(
         grouped
@@ -139,7 +174,7 @@ export function ReportSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl pb-8">
+      <SheetContent side="bottom" className="safe-bottom-sheet max-h-[90dvh] overflow-y-auto rounded-t-3xl">
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-2xl">Informar buraco</SheetTitle>
           <SheetDescription>Fique perto do buraco. A foto é opcional.</SheetDescription>

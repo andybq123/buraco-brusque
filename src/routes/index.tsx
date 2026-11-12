@@ -37,7 +37,7 @@ function Home() {
   const consertados = data.length - abertos;
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-background">
+    <div className="app-screen relative w-full overflow-hidden bg-background">
       <div className="absolute inset-0">
         <LazyMap
           focus={focus}
@@ -59,20 +59,20 @@ function Home() {
         />
       </div>
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3 sm:p-4">
-        <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-secondary/95 py-2 pl-2 pr-4 text-secondary-foreground shadow-lg backdrop-blur">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground">
+      <header className="safe-top pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 px-3 pb-3 sm:px-4">
+        <div className="pointer-events-auto flex min-w-0 max-w-max items-center gap-2 rounded-2xl bg-secondary/95 py-2 pl-2 pr-3 sm:gap-3 sm:pr-4 text-secondary-foreground shadow-lg backdrop-blur">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full sm:h-10 sm:w-10 bg-primary text-primary-foreground">
             <Construction className="h-5 w-5" />
           </span>
-          <div className="leading-tight">
-            <h1 className="text-base">Buraco Brusque</h1>
-            <p className="text-xs font-semibold tracking-wider text-primary">BRUSQUE · SC</p>
+          <div className="min-w-0 leading-tight">
+            <h1 className="truncate text-sm sm:text-base">Buraco Brusque</h1>
+            <p className="truncate text-[10px] sm:text-xs font-semibold tracking-wider text-primary">BRUSQUE · SC</p>
           </div>
         </div>
-        <div className="pointer-events-auto flex items-center gap-2">
-          <div className="flex items-center gap-3 rounded-2xl bg-secondary/95 px-4 py-2 text-secondary-foreground shadow-lg backdrop-blur">
-            <span className="font-display text-2xl leading-none">{abertos}</span>
-            <span className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-secondary-foreground/80">
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+          <div className="flex h-[52px] items-center gap-2 rounded-2xl bg-secondary/95 px-3 sm:gap-3 sm:px-4 text-secondary-foreground shadow-lg backdrop-blur">
+            <span className="font-display text-2xl leading-none" aria-label={`${abertos} buracos informados`}>{abertos}</span>
+            <span className="hidden text-[11px] font-semibold uppercase min-[400px]:inline leading-tight tracking-wide text-secondary-foreground/80">
               Buracos
               <br />
               informados
@@ -81,7 +81,7 @@ function Home() {
           <Link
             to="/auth"
             aria-label="Área do responsável"
-            className="grid h-11 w-11 place-items-center rounded-full bg-secondary/95 text-secondary-foreground shadow-lg backdrop-blur"
+            className="grid h-[52px] w-11 shrink-0 place-items-center rounded-full bg-secondary/95 text-secondary-foreground shadow-lg backdrop-blur"
           >
             <ShieldCheck className="h-5 w-5" />
           </Link>
@@ -89,15 +89,15 @@ function Home() {
       </header>
 
       {consertados > 0 && (
-        <div className="absolute left-3 top-20 z-10 flex items-center gap-2 rounded-full bg-secondary/90 px-3 py-1 text-xs font-semibold text-secondary-foreground sm:left-4">
+        <div className="safe-top-offset absolute left-3 z-10 flex items-center gap-2 rounded-full bg-secondary/90 px-3 py-1 text-xs font-semibold text-secondary-foreground sm:left-4">
           <span className="h-3 w-3 rounded-full bg-success" /> {consertados} consertados
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-4 safe-bottom">
         <Button
           onClick={() => setOpen(true)}
-          className="pointer-events-auto h-14 w-full max-w-md rounded-2xl border-[3px] border-secondary text-lg font-bold shadow-xl"
+          className="pointer-events-auto h-16 w-full max-w-md touch-manipulation rounded-2xl border-[3px] border-secondary text-lg font-bold shadow-xl"
         >
           <Plus className="!h-6 !w-6" /> Informar buraco
         </Button>

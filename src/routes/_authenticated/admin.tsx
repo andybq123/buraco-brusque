@@ -115,9 +115,9 @@ function AdminPage() {
   const counts = (s: PotholeStatus) => (potholes.data ?? []).filter((p) => p.status === s).length;
 
   return (
-    <div className="min-h-[100dvh] bg-background">
+    <div className="min-h-screen bg-background">
       <div className="hazard-stripe h-2" />
-      <header className="flex items-center justify-between bg-secondary px-4 py-3 text-secondary-foreground">
+      <header className="safe-top flex items-center justify-between bg-secondary px-4 pb-3 text-secondary-foreground">
         <h1 className="text-xl">Painel · Buraco Brusque</h1>
         <Button variant="ghost" size="sm" onClick={signOut} className="text-secondary-foreground hover:bg-secondary-foreground/10 hover:text-secondary-foreground">
           <LogOut className="mr-1 h-4 w-4" /> Sair

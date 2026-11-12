@@ -54,7 +54,7 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-secondary text-secondary-foreground">
+    <div className="min-h-screen bg-secondary text-secondary-foreground">
       <div className="hazard-stripe h-2" />
       <div className="mx-auto flex max-w-sm flex-col gap-6 px-6 py-10">
         <Link to="/" className="flex items-center gap-1 text-sm text-secondary-foreground/70">

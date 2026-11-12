@@ -2,15 +2,35 @@ import { MapContainer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl } from "maplibre-gl";
+import L from "leaflet";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 
 setWorkerUrl(workerUrl);
 
 /** Mapa base vetorial gratuito (OpenFreeMap, estilo "liberty"). */
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
 function BaseLayer() {
   const map = useMap();
   useEffect(() => {
+    if (!hasWebGL()) {
+      // Aparelhos antigos sem WebGL: mapa em imagens comuns
+      const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+      return () => {
+        map.removeLayer(tiles);
+      };
+    }
     const layer = maplibreGL({
       style: "https://tiles.openfreemap.org/styles/liberty",
       attributionControl: false,
@@ -64,7 +84,7 @@ export default function PotholeMap({
   onSelect?: (id: string) => void;
 }) {
   return (
-    <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false}>
+    <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false} tapTolerance={20} maxZoom={19}>
       <BaseLayer />
       <FlyTo target={focus ?? null} />
       {points.map((p) => {
@@ -73,7 +93,7 @@ export default function PotholeMap({
           <CircleMarker
             key={p.id}
             center={[p.lat, p.lng]}
-            radius={p.status === "aberto" ? 10 : 8}
+            radius={p.status === "aberto" ? 12 : 10}
             pathOptions={{ color: css("--secondary"), weight: 4, fillColor: c, fillOpacity: 1 }}
             eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
           >

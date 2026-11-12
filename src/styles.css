@@ -138,3 +138,17 @@
 @utility shadow-pop { box-shadow: var(--shadow-pop); }
 
 .leaflet-container { font-family: var(--font-sans); z-index: 0; }
+
+/* ---- Celular (iOS e Android) ---- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+.app-screen { height: 100vh; height: 100svh; height: 100dvh; }
+@supports (-webkit-touch-callout: none) { .app-screen { height: -webkit-fill-available; height: 100dvh; } }
+.safe-top { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+.safe-top-offset { top: calc(max(0.75rem, env(safe-area-inset-top)) + 4.25rem); }
+.safe-bottom { padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.75rem)); }
+.safe-bottom-sheet { padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem)); }
+/* evita o zoom automático do iPhone ao tocar em campos */
+input, select, textarea { font-size: 16px !important; }
+.leaflet-container { touch-action: none; }
+.leaflet-control-attribution { font-size: 10px; }
