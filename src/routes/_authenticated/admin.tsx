@@ -11,7 +11,7 @@ import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdmin, listAdmins, removeAdmin } from "@/lib/admin.functions";
-import { formatDate, type Pothole, type PotholeStatus } from "@/lib/potholes";
+import { formatDate, type Pothole, type PotholeStatus, hazardLabel, sizeLabel } from "@/lib/potholes";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -41,6 +41,7 @@ function AdminPage() {
   const [filter, setFilter] = useState<PotholeStatus>("aberto");
   const [focus, setFocus] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [onlyDanger, setOnlyDanger] = useState(false);
 
   const role = useQuery({
     queryKey: ["is-admin", user.id],
@@ -111,7 +112,9 @@ function AdminPage() {
     );
   }
 
-  const list = (potholes.data ?? []).filter((p) => p.status === filter);
+  const list = (potholes.data ?? [])
+    .filter((p) => p.status === filter && (!onlyDanger || p.hazards.length > 0))
+    .sort((a, b) => Number(b.hazards.length > 0) - Number(a.hazards.length > 0));
   const counts = (s: PotholeStatus) => (potholes.data ?? []).filter((p) => p.status === s).length;
 
   return (
@@ -132,7 +135,7 @@ function AdminPage() {
               setSelected(id);
               document.getElementById(`b-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
             }}
-            points={list.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, status: p.status }))}
+            points={list.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, status: p.status, danger: p.status === "aberto" && p.hazards.length > 0 }))}
           />
         </div>
 
@@ -144,6 +147,10 @@ function AdminPage() {
               <TabsTrigger value="removido">Removidos ({counts("removido")})</TabsTrigger>
             </TabsList>
           </Tabs>
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" className="h-5 w-5 accent-destructive" checked={onlyDanger} onChange={(e) => setOnlyDanger(e.target.checked)} />
+            Só perigosos
+          </label>
 
           {list.length === 0 && <p className="py-8 text-center text-muted-foreground">Nenhum buraco aqui.</p>}
 
@@ -160,6 +167,12 @@ function AdminPage() {
                   <div className="text-sm text-muted-foreground">
                     {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"} · último em {formatDate(p.last_reported_at)}
                   </div>
+                  {(p.size || p.hazards.length > 0) && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {p.size && <Badge variant="outline">{sizeLabel(p.size)}</Badge>}
+                      {p.hazards.map((h) => <Badge key={h} variant="destructive">{hazardLabel(h)}</Badge>)}
+                    </div>
+                  )}
                 </div>
                 <Badge variant={p.status === "aberto" ? "default" : "secondary"}>{STATUS_LABEL[p.status]}</Badge>
               </div>

@@ -33,6 +33,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          hazards: string[]
           id: string
           last_reported_at: string
           lat: number
@@ -40,11 +41,13 @@ export type Database = {
           photos: string[]
           report_count: number
           resolved_at: string | null
+          size: string | null
           status: string
         }
         Insert: {
           address?: string | null
           created_at?: string
+          hazards?: string[]
           id?: string
           last_reported_at?: string
           lat: number
@@ -52,11 +55,13 @@ export type Database = {
           photos?: string[]
           report_count?: number
           resolved_at?: string | null
+          size?: string | null
           status?: string
         }
         Update: {
           address?: string | null
           created_at?: string
+          hazards?: string[]
           id?: string
           last_reported_at?: string
           lat?: number
@@ -64,6 +69,7 @@ export type Database = {
           photos?: string[]
           report_count?: number
           resolved_at?: string | null
+          size?: string | null
           status?: string
         }
         Relationships: []
@@ -99,7 +105,14 @@ export type Database = {
         Returns: boolean
       }
       report_pothole: {
-        Args: { _address?: string; _lat: number; _lng: number; _photo?: string }
+        Args: {
+          _address?: string
+          _hazards?: string[]
+          _lat: number
+          _lng: number
+          _photo?: string
+          _size?: string
+        }
         Returns: Json
       }
     }

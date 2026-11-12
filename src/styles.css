@@ -163,6 +163,8 @@ input, select, textarea { font-size: 16px !important; }
   color: var(--success-foreground); box-shadow: 0 0 0 2px var(--success), 0 2px 6px rgb(0 0 0 / 0.35); }
 .pothole-pin--consertado svg { width: 16px; height: 16px; }
 .pothole-pin--removido { border-color: var(--muted-foreground); opacity: 0.6; }
+.pothole-pin--perigo { position: relative; border-color: var(--destructive) !important; box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 35%, transparent); }
+.pothole-pin-alert { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 9999px; background: var(--destructive); color: var(--destructive-foreground); font: 900 11px/16px sans-serif; text-align: center; border: 2px solid var(--card); }
 
 /* Bonequinho molengo */
 .buddy { position: relative; width: 64px; height: 94px; touch-action: none; cursor: grab; }

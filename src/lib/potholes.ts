@@ -11,6 +11,8 @@ export interface Pothole {
   last_reported_at: string;
   resolved_at: string | null;
   address: string | null;
+  size: PotholeSize | null;
+  hazards: string[];
 }
 
 export const BRUSQUE_CENTER: [number, number] = [-27.0977, -48.9175];
@@ -42,4 +44,31 @@ export function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: n
 
 export function formatDate(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+export type PotholeSize = "pequeno" | "medio" | "grande";
+export const SIZES: { id: PotholeSize; label: string }[] = [
+  { id: "pequeno", label: "Pequeno" },
+  { id: "medio", label: "Médio" },
+  { id: "grande", label: "Grande" },
+];
+export const HAZARDS: { id: string; label: string }[] = [
+  { id: "moto", label: "Risco para motos/bicicletas" },
+  { id: "pneu", label: "Fundo / pode estourar pneu" },
+  { id: "noite", label: "Difícil de ver à noite" },
+  { id: "agua", label: "Com água / alagado" },
+];
+export const sizeLabel = (s: string | null | undefined) => SIZES.find((x) => x.id === s)?.label ?? null;
+export const hazardLabel = (h: string) => HAZARDS.find((x) => x.id === h)?.label ?? h;
+
+/** Mesma regra do banco ao agrupar: fica o maior tamanho e somam-se os perigos. */
+export function mergeReport(
+  a: { size: PotholeSize | null; hazards: string[] },
+  b: { size: PotholeSize | null; hazards: string[] },
+) {
+  const rank = (s: PotholeSize | null) => (s ? SIZES.findIndex((x) => x.id === s) + 1 : 0);
+  return {
+    size: rank(b.size) > rank(a.size) ? b.size : a.size,
+    hazards: [...new Set([...a.hazards, ...b.hazards])].sort(),
+  };
 }

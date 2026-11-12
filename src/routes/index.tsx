@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LazyMap } from "@/components/LazyMap";
 import { ReportSheet } from "@/components/ReportSheet";
 import { listPublicPotholes } from "@/lib/potholes.functions";
-import { formatDate } from "@/lib/potholes";
+import { formatDate, hazardLabel, sizeLabel } from "@/lib/potholes";
 
 const potholesQuery = queryOptions({
   queryKey: ["potholes", "public"],
@@ -62,11 +62,14 @@ function Home() {
             lat: p.lat,
             lng: p.lng,
             status: p.status,
+            danger: p.status === "aberto" && (p.hazards?.length ?? 0) > 0,
             popup: (
               <div className="text-sm">
                 <strong>{p.status === "consertado" ? "Consertado" : "Buraco aberto"}</strong>
                 <br />
                 {p.address && (<>{p.address}<br /></>)}
+                {sizeLabel(p.size) && (<>Tamanho: {sizeLabel(p.size)}<br /></>)}
+                {p.hazards?.length > 0 && (<span className="font-semibold text-destructive">⚠ {p.hazards.map(hazardLabel).join(", ")}<br /></span>)}
                 Informado em {formatDate(p.created_at)}
                 <br />
                 {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
