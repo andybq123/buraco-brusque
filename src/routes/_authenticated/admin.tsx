@@ -155,7 +155,8 @@ function AdminPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-semibold">Informado em {formatDate(p.created_at)}</div>
+                  {p.address && <div className="font-semibold">{p.address}</div>}
+                  <div className={p.address ? "text-sm" : "font-semibold"}>Informado em {formatDate(p.created_at)}</div>
                   <div className="text-sm text-muted-foreground">
                     {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"} · último em {formatDate(p.last_reported_at)}
                   </div>

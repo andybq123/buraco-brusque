@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { PlacePanel } from "@/components/PlacePanel";
 import { Construction, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LazyMap } from "@/components/LazyMap";
@@ -12,6 +14,9 @@ const potholesQuery = queryOptions({
   queryKey: ["potholes", "public"],
   queryFn: () => listPublicPotholes(),
 });
+
+/** Intervalo de atualização automática do mapa (pausa enquanto alguém marca um buraco). */
+const REFRESH_MS = 20_000;
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,9 +34,19 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { data } = useSuspenseQuery(potholesQuery);
+  useSuspenseQuery(potholesQuery);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const [pos, setPos] = useState<[number, number] | null>(null);
+  const [address, setAddress] = useState<string | null>(null);
+  const busy = placing || open;
+  const { data = [] } = useQuery({
+    ...potholesQuery,
+    refetchInterval: busy ? false : REFRESH_MS,
+    refetchOnWindowFocus: !busy,
+    refetchIntervalInBackground: false,
+  });
   const [focus, setFocus] = useState<[number, number] | null>(null);
   const abertos = data.filter((p) => p.status === "aberto").length;
   const consertados = data.length - abertos;
@@ -41,6 +56,7 @@ function Home() {
       <div className="absolute inset-0">
         <LazyMap
           focus={focus}
+          placing={(placing || open) && pos ? { pos, onMove: (p) => !open && setPos(p) } : null}
           points={data.map((p) => ({
             id: p.id,
             lat: p.lat,
@@ -50,6 +66,7 @@ function Home() {
               <div className="text-sm">
                 <strong>{p.status === "consertado" ? "Consertado" : "Buraco aberto"}</strong>
                 <br />
+                {p.address && (<>{p.address}<br /></>)}
                 Informado em {formatDate(p.created_at)}
                 <br />
                 {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
@@ -94,18 +111,44 @@ function Home() {
         </div>
       )}
 
+      {placing ? (
+        <PlacePanel
+          pos={pos}
+          setPos={setPos}
+          address={address}
+          setAddress={setAddress}
+          onCancel={() => {
+            setPlacing(false);
+            setPos(null);
+          }}
+          onConfirm={() => {
+            setPlacing(false);
+            setOpen(true);
+          }}
+        />
+      ) : !open && (
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-4 safe-bottom">
         <Button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setAddress(null);
+            setPos(null);
+            setPlacing(true);
+          }}
           className="pointer-events-auto h-16 w-full max-w-md touch-manipulation rounded-2xl border-[3px] border-secondary text-lg font-bold shadow-xl"
         >
           <Plus className="!h-6 !w-6" /> Informar buraco
         </Button>
       </div>
+      )}
 
       <ReportSheet
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setPos(null);
+        }}
+        position={pos}
+        address={address}
         onDone={(pos) => {
           setFocus(pos);
           qc.invalidateQueries({ queryKey: ["potholes"] });

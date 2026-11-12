@@ -1,4 +1,5 @@
-import { MapContainer, CircleMarker, Popup, useMap } from "react-leaflet";
+import { MapContainer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import bonequinho from "@/assets/bonequinho.webp";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl } from "maplibre-gl";
@@ -45,7 +46,7 @@ function BaseLayer() {
   }, [map]);
   return null;
 }
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { BRUSQUE_CENTER } from "@/lib/potholes";
 
 export interface MapPoint {
@@ -64,43 +65,84 @@ function FlyTo({ target }: { target?: [number, number] | null }) {
   return null;
 }
 
-function css(v: string) {
-  return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const iconCache = new Map<string, L.DivIcon>();
+function potholeIcon(status: string) {
+  let ic = iconCache.get(status);
+  if (!ic) {
+    ic = L.divIcon({
+      className: "",
+      html: `<div class="pothole-pin pothole-pin--${status}"><img src="/favicon.png" alt="" /></div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -16],
+    });
+    iconCache.set(status, ic);
+  }
+  return ic;
 }
 
-function colorFor(status: string) {
-  if (status === "consertado") return css("--success");
-  if (status === "removido") return css("--muted-foreground");
-  return css("--primary");
+const buddyIcon = () =>
+  L.divIcon({
+    className: "",
+    html: `<div class="buddy"><div class="buddy-shadow"></div><img src="${bonequinho}" alt="Marcador" draggable="false" /></div>`,
+    iconSize: [64, 94],
+    iconAnchor: [32, 90],
+  });
+
+function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, number]) => void }) {
+  const icon = useMemo(buddyIcon, []);
+  const map = useMap();
+  useMapEvents({ click: (e) => onMove([e.latlng.lat, e.latlng.lng]) });
+  useEffect(() => {
+    if (!map.getBounds().pad(-0.2).contains(pos)) map.flyTo(pos, Math.max(map.getZoom(), 17));
+  }, [pos, map]);
+  return (
+    <Marker
+      position={pos}
+      icon={icon}
+      draggable
+      autoPan
+      zIndexOffset={1000}
+      eventHandlers={{
+        dragstart: (e) => (e.target as L.Marker).getElement()?.classList.add("buddy-dragging"),
+        dragend: (e) => {
+          const m = e.target as L.Marker;
+          m.getElement()?.classList.remove("buddy-dragging");
+          const ll = m.getLatLng();
+          onMove([ll.lat, ll.lng]);
+        },
+      }}
+    />
+  );
 }
 
 export default function PotholeMap({
   points,
   focus,
   onSelect,
+  placing,
 }: {
   points: MapPoint[];
   focus?: [number, number] | null;
   onSelect?: (id: string) => void;
+  placing?: { pos: [number, number]; onMove: (p: [number, number]) => void } | null;
 }) {
   return (
     <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false} tapTolerance={20} maxZoom={19}>
       <BaseLayer />
       <FlyTo target={focus ?? null} />
-      {points.map((p) => {
-        const c = colorFor(p.status);
-        return (
-          <CircleMarker
-            key={p.id}
-            center={[p.lat, p.lng]}
-            radius={p.status === "aberto" ? 12 : 10}
-            pathOptions={{ color: css("--secondary"), weight: 4, fillColor: c, fillOpacity: 1 }}
-            eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
-          >
-            {p.popup && <Popup>{p.popup}</Popup>}
-          </CircleMarker>
-        );
-      })}
+      {points.map((p) => (
+        <Marker
+          key={p.id}
+          position={[p.lat, p.lng]}
+          icon={potholeIcon(p.status)}
+          opacity={placing ? 0.6 : 1}
+          eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
+        >
+          {p.popup && !placing && <Popup>{p.popup}</Popup>}
+        </Marker>
+      ))}
+      {placing && <Placer pos={placing.pos} onMove={placing.onMove} />}
     </MapContainer>
   );
 }

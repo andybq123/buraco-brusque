@@ -152,3 +152,33 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 input, select, textarea { font-size: 16px !important; }
 .leaflet-container { touch-action: none; }
 .leaflet-control-attribution { font-size: 10px; }
+
+/* Marcadores do mapa */
+.pothole-pin {
+  width: 36px; height: 36px; border-radius: 9999px; display: grid; place-items: center;
+  background: var(--card); border: 3px solid var(--primary); box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.pothole-pin img { width: 22px; height: 22px; }
+.pothole-pin--consertado { border-color: var(--success); background: var(--success); }
+.pothole-pin--consertado img { filter: grayscale(1) brightness(2); }
+.pothole-pin--removido { border-color: var(--muted-foreground); opacity: 0.6; }
+
+/* Bonequinho molengo */
+.buddy { position: relative; width: 64px; height: 94px; touch-action: none; cursor: grab; }
+.buddy img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 100%;
+  animation: buddy-wobble 1.6s ease-in-out infinite; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.buddy-shadow { position: absolute; left: 50%; bottom: 0; width: 34px; height: 10px; margin-left: -17px; border-radius: 50%;
+  background: rgb(0 0 0 / 0.3); filter: blur(1px); }
+.buddy-dragging .buddy img { animation: buddy-jelly 0.35s ease-in-out infinite alternate; transform: translateY(-14px); }
+.buddy-dragging .buddy { cursor: grabbing; }
+@keyframes buddy-wobble {
+  0%, 100% { transform: rotate(-4deg) scale(1, 1); }
+  25% { transform: rotate(0deg) scale(1.05, 0.95); }
+  50% { transform: rotate(4deg) scale(1, 1); }
+  75% { transform: rotate(0deg) scale(0.96, 1.05); }
+}
+@keyframes buddy-jelly {
+  from { transform: translateY(-14px) rotate(-10deg) scale(0.92, 1.1); }
+  to { transform: translateY(-18px) rotate(10deg) scale(1.08, 0.92); }
+}
+@media (prefers-reduced-motion: reduce) { .buddy img { animation: none !important; } }

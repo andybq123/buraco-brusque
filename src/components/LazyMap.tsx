@@ -8,6 +8,7 @@ export function LazyMap(props: {
   points: MapPoint[];
   focus?: [number, number] | null;
   onSelect?: (id: string) => void;
+  placing?: { pos: [number, number]; onMove: (p: [number, number]) => void } | null;
 }) {
   const fallback = <div className="h-full w-full animate-pulse bg-muted" />;
   return (

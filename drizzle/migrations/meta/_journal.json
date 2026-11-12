@@ -15,6 +15,13 @@
       "when": 1794509011933,
       "tag": "0001_tighten_photo_upload",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794509433774,
+      "tag": "0002_pothole_address",
+      "breakpoints": true
     }
   ]
 }
