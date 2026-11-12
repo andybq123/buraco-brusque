@@ -46,7 +46,7 @@ function BaseLayer() {
   }, [map]);
   return null;
 }
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { BRUSQUE_CENTER } from "@/lib/potholes";
 
 export interface MapPoint {
@@ -93,8 +93,10 @@ function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, n
   const icon = useMemo(buddyIcon, []);
   const map = useMap();
   useMapEvents({ click: (e) => onMove([e.latlng.lat, e.latlng.lng]) });
+  const first = useRef(true);
   useEffect(() => {
-    if (!map.getBounds().pad(-0.2).contains(pos)) map.flyTo(pos, Math.max(map.getZoom(), 17));
+    if (first.current || !map.getBounds().pad(-0.2).contains(pos)) map.flyTo(pos, Math.max(map.getZoom(), 17));
+    first.current = false;
   }, [pos, map]);
   return (
     <Marker

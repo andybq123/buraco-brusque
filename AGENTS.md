@@ -35,3 +35,5 @@ use the editor.
 - Photos live in the private `fotos` bucket (public buckets are blocked); admins view them via signed URLs.
 - Maps use Leaflet with the OpenFreeMap "liberty" vector style via maplibre-gl-leaflet, loaded client-only via `LazyMap`.
 - Mobile-first: safe-area utilities (safe-top/safe-bottom), 16px inputs (no iOS zoom), raster OSM fallback when WebGL is missing, photo upload falls back to original file when the device cannot shrink it.
+- Report flow: draggable mascot marker (PlacePanel + PotholeMap `placing`) → ReportSheet; addresses via Nominatim in `src/lib/geocode.ts`; public map polls and pauses polling while a citizen is placing/sending so the marker is never disturbed.
+- Photos go through `src/lib/photo.ts` (images only, HEIC→JPEG via lazy heic2any, small low-quality JPEG); photo failure never blocks the report.

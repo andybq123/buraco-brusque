@@ -10,6 +10,7 @@ export interface Pothole {
   created_at: string;
   last_reported_at: string;
   resolved_at: string | null;
+  address: string | null;
 }
 
 export const BRUSQUE_CENTER: [number, number] = [-27.0977, -48.9175];
