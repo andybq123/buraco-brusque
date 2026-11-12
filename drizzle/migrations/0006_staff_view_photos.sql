@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "admin view photo" ON storage.objects;
+CREATE POLICY "staff view photo" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'fotos' AND public.is_staff(auth.uid()));

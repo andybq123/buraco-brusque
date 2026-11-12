@@ -31,8 +31,8 @@ use the editor.
 
 ## Project rules
 - Pothole grouping and Brusque bounds are enforced in the `report_pothole` SQL function; keep `src/lib/potholes.ts` constants in sync (UI pre-checks only).
-- Admin access = `admin` row in `user_roles`, synced by triggers from `admin_emails`; admins create/remove panel users via service-role server functions in `src/lib/admin.functions.ts`. First admin is created from ADMIN_EMAIL/ADMIN_PASSWORD env (auto on /auth when no admin exists, or `scripts/create-admin.ts`).
-- Photos live in the private `fotos` bucket (public buckets are blocked); admins view them via signed URLs.
+- Panel access = role row in `user_roles` (`admin` full access incl. users and permanent delete; `operador` conclude/remove/restore), synced by triggers from `admin_emails.role`; `is_staff()` gates pothole RLS. Admins manage users and hard-delete removed potholes (with photos) via service-role server functions in `src/lib/admin.functions.ts`. Internal pothole columns (photos, repaired_by, resolved_by_email) are hidden from anon via column grants. First admin is created from ADMIN_EMAIL/ADMIN_PASSWORD env (auto on /auth when no admin exists, or `scripts/create-admin.ts`).
+- Photos live in the private `fotos` bucket (public buckets are blocked); staff view them via signed URLs.
 - Maps use Leaflet with the OpenFreeMap "liberty" vector style via maplibre-gl-leaflet, loaded client-only via `LazyMap`.
 - Mobile-first: safe-area utilities (safe-top/safe-bottom), 16px inputs (no iOS zoom), raster OSM fallback when WebGL is missing, photo upload falls back to original file when the device cannot shrink it.
 - Report flow: draggable mascot marker (PlacePanel + PotholeMap `placing`) → ReportSheet; addresses via Nominatim in `src/lib/geocode.ts`; public map polls and pauses polling while a citizen is placing/sending so the marker is never disturbed.

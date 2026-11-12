@@ -18,14 +18,17 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
           created_at?: string
           email: string
+          role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           created_at?: string
           email?: string
+          role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
       }
@@ -39,8 +42,10 @@ export type Database = {
           lat: number
           lng: number
           photos: string[]
+          repaired_by: string | null
           report_count: number
           resolved_at: string | null
+          resolved_by_email: string | null
           size: string | null
           status: string
         }
@@ -53,8 +58,10 @@ export type Database = {
           lat: number
           lng: number
           photos?: string[]
+          repaired_by?: string | null
           report_count?: number
           resolved_at?: string | null
+          resolved_by_email?: string | null
           size?: string | null
           status?: string
         }
@@ -67,8 +74,10 @@ export type Database = {
           lat?: number
           lng?: number
           photos?: string[]
+          repaired_by?: string | null
           report_count?: number
           resolved_at?: string | null
+          resolved_by_email?: string | null
           size?: string | null
           status?: string
         }
@@ -104,6 +113,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       report_pothole: {
         Args: {
           _address?: string
@@ -117,7 +127,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin"
+      app_role: "admin" | "operador"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -245,7 +255,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin"],
+      app_role: ["admin", "operador"],
     },
   },
 } as const

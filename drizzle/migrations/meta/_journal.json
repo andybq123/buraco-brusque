@@ -29,6 +29,27 @@
       "when": 1794511612783,
       "tag": "0003_pothole_size_hazards",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794512598165,
+      "tag": "0004_add_operador_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794512615158,
+      "tag": "0005_staff_roles_repair_info",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794512626707,
+      "tag": "0006_staff_view_photos",
+      "breakpoints": true
     }
   ]
 }

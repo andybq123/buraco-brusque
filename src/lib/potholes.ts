@@ -13,6 +13,8 @@ export interface Pothole {
   address: string | null;
   size: PotholeSize | null;
   hazards: string[];
+  repaired_by?: string | null;
+  resolved_by_email?: string | null;
 }
 
 export const BRUSQUE_CENTER: [number, number] = [-27.0977, -48.9175];
