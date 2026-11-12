@@ -94,6 +94,16 @@ export function ReportSheet({
       if (error) throw error;
       try { localStorage.setItem(LAST_KEY, JSON.stringify({ lat: geo.lat, lng: geo.lng, t: Date.now() })); } catch { /* modo privado */ }
       const grouped = (data as { grouped?: boolean } | null)?.grouped;
+      window.__lovableEvents?.track?.("project.pothole_reported", {
+        grouped: !!grouped,
+        has_photo: !!photoName,
+        size: size ?? "nao_informado",
+        hazard_count: hazards.length,
+        hazard_moto: hazards.includes("moto"),
+        hazard_pneu: hazards.includes("pneu"),
+        hazard_noite: hazards.includes("noite"),
+        hazard_agua: hazards.includes("agua"),
+      });
       toast.success(
         grouped
           ? "Esse buraco já estava no mapa — somamos o seu aviso. Obrigado!"

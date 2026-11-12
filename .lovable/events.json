@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "events": {
+    "project.pothole_reported": {
+      "event_schema_version": 1,
+      "description": "A resident successfully submitted a pothole report, with chosen size and hazards.",
+      "privacy": {
+        "contains_pii": false,
+        "purpose": "product_analytics"
+      },
+      "properties_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grouped",
+          "has_photo",
+          "size",
+          "hazard_count",
+          "hazard_moto",
+          "hazard_pneu",
+          "hazard_noite",
+          "hazard_agua"
+        ],
+        "properties": {
+          "grouped": {
+            "type": "boolean"
+          },
+          "has_photo": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "pequeno",
+              "medio",
+              "grande",
+              "nao_informado"
+            ]
+          },
+          "hazard_count": {
+            "type": "integer"
+          },
+          "hazard_moto": {
+            "type": "boolean"
+          },
+          "hazard_pneu": {
+            "type": "boolean"
+          },
+          "hazard_noite": {
+            "type": "boolean"
+          },
+          "hazard_agua": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "project.report_started": {
+      "event_schema_version": 1,
+      "description": "A resident tapped \"Informar buraco\" to start reporting a pothole.",
+      "privacy": {
+        "contains_pii": false,
+        "purpose": "product_analytics"
+      },
+      "properties_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      }
+    }
+  }
+}

@@ -136,6 +136,7 @@ function Home() {
             setAddress(null);
             setPos(null);
             setPlacing(true);
+            window.__lovableEvents?.track?.("project.report_started", {});
           }}
           className="pointer-events-auto h-16 w-full max-w-md touch-manipulation rounded-2xl border-[3px] border-secondary text-lg font-bold shadow-xl"
         >
