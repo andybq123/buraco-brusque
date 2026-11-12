@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { bootstrapAdmin } from "@/lib/admin.functions";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,9 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"entrar" | "criar">("entrar");
+  useEffect(() => {
+    bootstrapAdmin().catch(() => {});
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,20 +36,9 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "entrar") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/admin" });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/admin` },
-        });
-        if (error) throw error;
-        toast.success("Enviamos um e-mail de confirmação. Abra o link para ativar o acesso.");
-        setMode("entrar");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate({ to: "/admin" });
     } catch (err) {
       const m = err instanceof Error ? err.message : "";
       toast.error(
@@ -71,7 +63,7 @@ function AuthPage() {
         <div>
           <h1 className="text-3xl">Área do responsável</h1>
           <p className="mt-1 text-secondary-foreground/70">
-            {mode === "entrar" ? "Entre para gerenciar os buracos." : "Crie seu acesso com o e-mail autorizado."}
+Entre para gerenciar os buracos.
           </p>
         </div>
         <form onSubmit={submit} className="space-y-4 rounded-3xl bg-card p-6 text-card-foreground">
@@ -84,15 +76,11 @@ function AuthPage() {
             <Input id="senha" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <Button type="submit" className="h-12 w-full rounded-xl text-base font-bold" disabled={loading}>
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === "entrar" ? "Entrar" : "Criar acesso"}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Entrar"}
           </Button>
-          <button
-            type="button"
-            className="w-full text-center text-sm text-muted-foreground underline"
-            onClick={() => setMode(mode === "entrar" ? "criar" : "entrar")}
-          >
-            {mode === "entrar" ? "Primeiro acesso? Criar senha" : "Já tenho acesso"}
-          </button>
+          <p className="text-center text-xs text-muted-foreground">
+            Novos acessos são criados por um administrador no painel.
+          </p>
         </form>
       </div>
     </div>

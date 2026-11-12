@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { createAdmin, listAdmins, removeAdmin } from "@/lib/admin.functions";
 import { formatDate, type Pothole, type PotholeStatus } from "@/lib/potholes";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -88,8 +90,10 @@ function AdminPage() {
   };
 
   const signOut = async () => {
+    await qc.cancelQueries();
+    qc.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/" });
+    navigate({ to: "/auth", replace: true });
   };
 
   if (role.isLoading) return <div className="p-8">Carregando…</div>;
@@ -208,47 +212,57 @@ function AdminPage() {
 
 function AdminEmails() {
   const qc = useQueryClient();
+  const list = useServerFn(listAdmins);
+  const create = useServerFn(createAdmin);
+  const remove = useServerFn(removeAdmin);
   const [email, setEmail] = useState("");
-  const q = useQuery({
-    queryKey: ["admin-emails"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("admin_emails").select("email").order("created_at");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const q = useQuery({ queryKey: ["admins"], queryFn: () => list() });
+
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("admin_emails").insert({ email: email.trim().toLowerCase() });
-    if (error) {
-      toast.error("Não foi possível adicionar.");
-      return;
+    setBusy(true);
+    try {
+      await create({ data: { email, password } });
+      toast.success(`Usuário ${email} criado. Ele já pode entrar com essa senha.`);
+      setEmail("");
+      setPassword("");
+      qc.invalidateQueries({ queryKey: ["admins"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível criar.");
+    } finally {
+      setBusy(false);
     }
-    setEmail("");
-    toast.success("Responsável autorizado. Ele cria a senha em “Primeiro acesso”.");
-    qc.invalidateQueries({ queryKey: ["admin-emails"] });
   };
-  const remove = async (em: string) => {
-    if (!confirm(`Remover o acesso de ${em}?`)) return;
-    await supabase.from("admin_emails").delete().eq("email", em);
-    qc.invalidateQueries({ queryKey: ["admin-emails"] });
+  const del = async (em: string) => {
+    if (!confirm(`Remover o usuário ${em}?`)) return;
+    try {
+      await remove({ data: { email: em } });
+      qc.invalidateQueries({ queryKey: ["admins"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível remover.");
+    }
   };
   return (
     <section className="space-y-3 rounded-3xl border bg-muted p-4">
-      <h2 className="text-lg">Responsáveis</h2>
+      <h2 className="text-lg">Usuários do painel</h2>
       <ul className="space-y-1">
         {q.data?.map((r) => (
           <li key={r.email} className="flex items-center justify-between text-sm">
             {r.email}
-            <Button size="icon" variant="ghost" onClick={() => remove(r.email)} aria-label="Remover">
+            <Button size="icon" variant="ghost" onClick={() => del(r.email)} aria-label="Remover">
               <Trash2 className="h-4 w-4" />
             </Button>
           </li>
         ))}
       </ul>
-      <form onSubmit={add} className="flex gap-2">
-        <Input type="email" required placeholder="email@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Button type="submit"><UserPlus className="h-4 w-4" /></Button>
+      <form onSubmit={add} className="space-y-2">
+        <Input type="email" required placeholder="E-mail do novo usuário" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input type="password" required minLength={8} placeholder="Senha (mínimo 8 caracteres)" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Button type="submit" className="w-full" disabled={busy}>
+          <UserPlus className="mr-1 h-4 w-4" /> Criar usuário
+        </Button>
       </form>
     </section>
   );

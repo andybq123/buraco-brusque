@@ -31,6 +31,6 @@ use the editor.
 
 ## Project rules
 - Pothole grouping and Brusque bounds are enforced in the `report_pothole` SQL function; keep `src/lib/potholes.ts` constants in sync (UI pre-checks only).
-- Admin access = `admin` row in `user_roles`, synced by triggers from the `admin_emails` allowlist; never grant roles from client code.
+- Admin access = `admin` row in `user_roles`, synced by triggers from `admin_emails`; admins create/remove panel users via service-role server functions in `src/lib/admin.functions.ts`. First admin is created from ADMIN_EMAIL/ADMIN_PASSWORD env (auto on /auth when no admin exists, or `scripts/create-admin.ts`).
 - Photos live in the private `fotos` bucket (public buckets are blocked); admins view them via signed URLs.
-- Maps use Leaflet + OpenStreetMap tiles, loaded client-only via `LazyMap`.
+- Maps use Leaflet with the OpenFreeMap "liberty" vector style via maplibre-gl-leaflet, loaded client-only via `LazyMap`.
