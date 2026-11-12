@@ -1,11 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import type { VisitPoint } from "./VisitsMap";
+
+const VisitsMap = lazy(() => import("./VisitsMap"));
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Stats = {
   total: number;
   today: number;
+  online: number;
+  cities: { city: string; region: string | null; count: number }[];
+  points: VisitPoint[];
   mobile: number;
   hosts: { host: string; count: number }[];
   daily: { day: string; host: string; count: number }[];
@@ -20,9 +26,11 @@ export function VisitsPanel() {
       if (error) throw error;
       return data as unknown as Stats;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 15_000,
   });
   const s = q.data;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const byDay = new Map<string, number>();
   s?.daily.forEach((d) => byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.count));
   const dayList = [...byDay.entries()];
@@ -45,11 +53,35 @@ export function VisitsPanel() {
       {q.error && <p className="text-sm text-destructive">Não foi possível carregar os acessos.</p>}
       {s && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="rounded-lg border bg-card p-4">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Online agora</p>
+              <p className="mt-1 text-2xl font-bold">{s.online}</p>
+            </div>
             <Card label="Hoje" value={s.today} />
             <Card label={`Últimos ${days} dias`} value={s.total} />
             <Card label="Pelo celular" value={`${pct(s.mobile)}%`} />
             <Card label="Domínios" value={s.hosts.length} />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+            <section className="overflow-hidden rounded-lg border bg-card">
+              <h3 className="p-4 pb-2 text-sm font-semibold">De onde vêm os acessos <span className="font-normal text-muted-foreground">(verde = online agora)</span></h3>
+              <div className="h-80">
+                {mounted && <Suspense fallback={null}><VisitsMap points={s.points} /></Suspense>}
+              </div>
+            </section>
+            <section className="rounded-lg border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold">Por cidade</h3>
+              {s.cities.length === 0 && <p className="text-sm text-muted-foreground">Nenhum acesso ainda.</p>}
+              <ul className="space-y-1.5 text-sm">
+                {s.cities.map((c) => (
+                  <li key={`${c.city}-${c.region}`} className="flex justify-between gap-2">
+                    <span className="truncate">{c.city}{c.region ? <span className="text-muted-foreground"> · {c.region}</span> : null}</span>
+                    <span className="font-medium">{c.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
           <section className="rounded-lg border bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">Por domínio</h3>
@@ -76,7 +108,7 @@ export function VisitsPanel() {
               </div>
             )}
           </section>
-          <p className="text-xs text-muted-foreground">Cada visita conta uma vez por aba aberta. Não guardamos IP nem dados pessoais.</p>
+          <p className="text-xs text-muted-foreground">Cada visita conta uma vez por aba aberta. A cidade é aproximada pela conexão; não guardamos IP nem dados pessoais.</p>
         </>
       )}
     </div>

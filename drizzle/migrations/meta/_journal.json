@@ -57,6 +57,13 @@
       "when": 1794513882815,
       "tag": "0007_site_visits",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794514112519,
+      "tag": "0008_site_visits_geo_live",
+      "breakpoints": true
     }
   ]
 }

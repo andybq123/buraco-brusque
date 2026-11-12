@@ -11,7 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { trackVisit } from "@/lib/visits.functions";
+import { pingVisit, trackVisit } from "@/lib/visits.functions";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -143,11 +143,28 @@ function RootComponent() {
   }, [router, queryClient]);
 
   useEffect(() => {
+    let id: number | null = null;
     try {
-      if (sessionStorage.getItem("dor_visit")) return;
-      sessionStorage.setItem("dor_visit", "1");
+      const saved = sessionStorage.getItem("dor_visit_id");
+      if (saved) id = Number(saved) || null;
     } catch {}
-    trackVisit({ data: { path: window.location.pathname, mobile: /Mobi|Android|iPhone/i.test(navigator.userAgent) } }).catch(() => {});
+    const start = id
+      ? Promise.resolve(id)
+      : trackVisit({ data: { path: window.location.pathname, mobile: /Mobi|Android|iPhone/i.test(navigator.userAgent) } })
+          .then((r) => {
+            if (r.id) try { sessionStorage.setItem("dor_visit_id", String(r.id)); } catch {}
+            return r.id;
+          })
+          .catch(() => null);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    start.then((vid) => {
+      if (!vid) return;
+      if (id) pingVisit({ data: { id: vid } }).catch(() => {});
+      timer = setInterval(() => {
+        if (document.visibilityState === "visible") pingVisit({ data: { id: vid } }).catch(() => {});
+      }, 45_000);
+    });
+    return () => clearInterval(timer);
   }, []);
 
   return (

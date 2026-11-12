@@ -47,7 +47,8 @@ function BaseLayer() {
   return null;
 }
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { BRUSQUE_CENTER } from "@/lib/potholes";
+import { BRUSQUE_CENTER, isInsideBrusque } from "@/lib/potholes";
+import { toast } from "sonner";
 
 export interface MapPoint {
   id: string;
@@ -96,7 +97,12 @@ const buddyIcon = () =>
 function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, number]) => void }) {
   const icon = useMemo(buddyIcon, []);
   const map = useMap();
-  useMapEvents({ click: (e) => onMove([e.latlng.lat, e.latlng.lng]) });
+  useMapEvents({
+    click: (e) => {
+      if (isInsideBrusque(e.latlng.lat, e.latlng.lng)) onMove([e.latlng.lat, e.latlng.lng]);
+      else toast.error("Só é possível marcar buracos dentro de Brusque.");
+    },
+  });
   const first = useRef(true);
   useEffect(() => {
     if (first.current || !map.getBounds().pad(-0.2).contains(pos)) map.flyTo(pos, Math.max(map.getZoom(), 17));
@@ -115,7 +121,11 @@ function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, n
           const m = e.target as L.Marker;
           m.getElement()?.classList.remove("buddy-dragging");
           const ll = m.getLatLng();
-          onMove([ll.lat, ll.lng]);
+          if (isInsideBrusque(ll.lat, ll.lng)) onMove([ll.lat, ll.lng]);
+          else {
+            m.setLatLng(pos);
+            toast.error("Só é possível marcar buracos dentro de Brusque.");
+          }
         },
       }}
     />

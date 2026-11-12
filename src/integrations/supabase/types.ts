@@ -85,25 +85,43 @@ export type Database = {
       }
       site_visits: {
         Row: {
+          city: string | null
+          country: string | null
           created_at: string
           device: string | null
           host: string
           id: number
+          last_seen: string
+          lat: number | null
+          lng: number | null
           path: string
+          region: string | null
         }
         Insert: {
+          city?: string | null
+          country?: string | null
           created_at?: string
           device?: string | null
           host: string
           id?: number
+          last_seen?: string
+          lat?: number | null
+          lng?: number | null
           path: string
+          region?: string | null
         }
         Update: {
+          city?: string | null
+          country?: string | null
           created_at?: string
           device?: string | null
           host?: string
           id?: number
+          last_seen?: string
+          lat?: number | null
+          lng?: number | null
           path?: string
+          region?: string | null
         }
         Relationships: []
       }
