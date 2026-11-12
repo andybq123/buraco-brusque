@@ -8,6 +8,13 @@
       "when": 1794504300020,
       "tag": "0000_buracos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794509011933,
+      "tag": "0001_tighten_photo_upload",
+      "breakpoints": true
     }
   ]
 }
