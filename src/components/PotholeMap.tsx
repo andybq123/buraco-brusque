@@ -1,5 +1,5 @@
 import { MapContainer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
-import bonequinho from "@/assets/bonequinho.webp";
+import bonequinho from "@/assets/mascote.webp";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl } from "maplibre-gl";
