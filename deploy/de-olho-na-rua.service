@@ -1,0 +1,23 @@
+# /etc/systemd/system/de-olho-na-rua.service
+#
+# Mantem o app no ar e religa sozinho se cair.
+# As senhas ficam em /etc/de-olho/env (chmod 600), nao aqui.
+
+[Unit]
+Description=De Olho na Rua
+After=network.target
+
+[Service]
+Type=simple
+User=deolho
+WorkingDirectory=/opt/de-olho-na-rua
+EnvironmentFile=/etc/de-olho/env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+ExecStart=/usr/bin/node .output/server/index.mjs
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
