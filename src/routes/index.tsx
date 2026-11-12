@@ -21,9 +21,9 @@ const REFRESH_MS = 20_000;
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Buraco Brusque — mapa dos buracos da cidade" },
+      { title: "De Olho na Rua — mapa dos buracos da cidade" },
       { name: "description", content: "Veja e informe buracos nas ruas de Brusque, sem cadastro." },
-      { property: "og:title", content: "Buraco Brusque" },
+      { property: "og:title", content: "De Olho na Rua" },
       { property: "og:description", content: "Veja e informe buracos nas ruas de Brusque, sem cadastro." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -85,7 +85,7 @@ function Home() {
             <Construction className="h-5 w-5" />
           </span>
           <div className="min-w-0 leading-tight">
-            <h1 className="truncate text-sm sm:text-base">Buraco Brusque</h1>
+            <h1 className="truncate text-sm sm:text-base">De Olho na Rua</h1>
             <p className="truncate text-[10px] sm:text-xs font-semibold tracking-wider text-primary">BRUSQUE · SC</p>
           </div>
         </div>

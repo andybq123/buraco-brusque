@@ -16,9 +16,9 @@ import { formatDate, type Pothole, type PotholeStatus, hazardLabel, sizeLabel } 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Painel — Buraco Brusque" },
+      { title: "Painel — De Olho na Rua" },
       { name: "description", content: "Gerencie os buracos informados em Brusque." },
-      { property: "og:title", content: "Painel — Buraco Brusque" },
+      { property: "og:title", content: "Painel — De Olho na Rua" },
       { property: "og:description", content: "Gerencie os buracos informados em Brusque." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -121,7 +121,7 @@ function AdminPage() {
     <div className="min-h-screen bg-background">
       <div className="hazard-stripe h-2" />
       <header className="safe-top flex items-center justify-between bg-secondary px-4 pb-3 text-secondary-foreground">
-        <h1 className="text-xl">Painel · Buraco Brusque</h1>
+        <h1 className="text-xl">Painel · De Olho na Rua</h1>
         <Button variant="ghost" size="sm" onClick={signOut} className="text-secondary-foreground hover:bg-secondary-foreground/10 hover:text-secondary-foreground">
           <LogOut className="mr-1 h-4 w-4" /> Sair
         </Button>

@@ -11,9 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Buraco Brusque" },
-      { name: "description", content: "Acesso do responsável pela área ao painel do Buraco Brusque." },
-      { property: "og:title", content: "Entrar — Buraco Brusque" },
+      { title: "Entrar — De Olho na Rua" },
+      { name: "description", content: "Acesso do responsável pela área ao painel do De Olho na Rua." },
+      { property: "og:title", content: "Entrar — De Olho na Rua" },
       { property: "og:description", content: "Acesso do responsável pela área." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
