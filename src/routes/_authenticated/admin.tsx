@@ -268,7 +268,7 @@ function Overview({ onGo }: { onGo: (s: Section) => void }) {
               {urgent.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
                   <div className="min-w-0">
-                    <div className="truncate font-medium">{p.address ?? "Endereço não informado"}</div>
+                    <div className="truncate font-medium"><span className="text-muted-foreground">#{p.number}</span> {p.address ?? "Endereço não informado"}</div>
                     <div className="text-xs text-muted-foreground">{ageLabel(p.created_at)} · {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}</div>
                   </div>
                   {p.hazards.length > 0 && <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3" />{p.hazards.length}</Badge>}
@@ -284,8 +284,8 @@ function Overview({ onGo }: { onGo: (s: Section) => void }) {
 
 function exportCsv(rows: Pothole[]) {
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Endereço", "Status", "Tamanho", "Perigos", "Avisos", "Latitude", "Longitude", "Informado em", "Concluído em", "Equipe do reparo", "Registrado por"];
-  const lines = rows.map((p) => [p.address, STATUS_LABEL[p.status], sizeLabel(p.size), p.hazards.map(hazardLabel).join("; "), p.report_count, p.lat, p.lng, formatDate(p.created_at), p.resolved_at ? formatDate(p.resolved_at) : "", p.repaired_by, p.resolved_by_email].map(esc).join(";"));
+  const head = ["Nº", "Endereço", "Status", "Tamanho", "Perigos", "Avisos", "Latitude", "Longitude", "Informado em", "Concluído em", "Equipe do reparo", "Registrado por"];
+  const lines = rows.map((p) => [p.number, p.address, STATUS_LABEL[p.status], sizeLabel(p.size), p.hazards.map(hazardLabel).join("; "), p.report_count, p.lat, p.lng, formatDate(p.created_at), p.resolved_at ? formatDate(p.resolved_at) : "", p.repaired_by, p.resolved_by_email].map(esc).join(";"));
   const blob = new Blob(["\ufeff" + [head.map(esc).join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -375,7 +375,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
   const q = search.trim().toLowerCase();
   const list = all
     .filter((p) => p.status === filter && (!onlyDanger || p.hazards.length > 0))
-    .filter((p) => !q || (p.address ?? "").toLowerCase().includes(q) || (p.repaired_by ?? "").toLowerCase().includes(q))
+    .filter((p) => !q || String(p.number) === q.replace("#", "") || (p.address ?? "").toLowerCase().includes(q) || (p.repaired_by ?? "").toLowerCase().includes(q))
     .sort((a, b) => Number(b.hazards.length > 0) - Number(a.hazards.length > 0));
   const count = (s: PotholeStatus) => all.filter((p) => p.status === s).length;
   const dangerous = all.filter((p) => p.status === "aberto" && p.hazards.length > 0).length;
@@ -399,7 +399,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
         </Tabs>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Buscar por endereço ou equipe" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder="Buscar por nº, endereço ou equipe" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <label className="flex items-center gap-2 text-sm font-medium">
           <Switch checked={onlyDanger} onCheckedChange={setOnlyDanger} /> Só perigosos
@@ -440,7 +440,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="font-semibold">{p.address ?? "Endereço não informado"}</div>
+                  <div className="font-semibold"><span className="text-muted-foreground">#{p.number}</span> {p.address ?? "Endereço não informado"}</div>
                   <div className="text-xs text-muted-foreground">
                     Informado {ageLabel(p.created_at)} ({formatDate(p.created_at)}) · {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
                   </div>

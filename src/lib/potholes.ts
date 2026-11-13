@@ -6,6 +6,7 @@ export interface Pothole {
   lat: number;
   lng: number;
   status: PotholeStatus;
+  number: number;
   report_count: number;
   photos: string[];
   created_at: string;

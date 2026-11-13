@@ -77,7 +77,7 @@ function Home() {
             danger: p.status === "aberto" && (p.hazards?.length ?? 0) > 0,
             popup: (
               <div className="text-sm">
-                <strong>{p.status === "consertado" ? "Consertado" : "Buraco aberto"}</strong>
+                <strong>{p.status === "consertado" ? "Consertado" : "Buraco aberto"} · nº {p.number}</strong>
                 <br />
                 {p.address && (<>{p.address}<br /></>)}
                 {sizeLabel(p.size) && (<>Tamanho: {sizeLabel(p.size)}<br /></>)}

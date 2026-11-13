@@ -41,6 +41,7 @@ export type Database = {
           last_reported_at: string
           lat: number
           lng: number
+          number: number
           photos: string[]
           repaired_by: string | null
           report_count: number
@@ -57,6 +58,7 @@ export type Database = {
           last_reported_at?: string
           lat: number
           lng: number
+          number?: number
           photos?: string[]
           repaired_by?: string | null
           report_count?: number
@@ -73,6 +75,7 @@ export type Database = {
           last_reported_at?: string
           lat?: number
           lng?: number
+          number?: number
           photos?: string[]
           repaired_by?: string | null
           report_count?: number
