@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle, Check, CheckCircle2, Construction, ExternalLink, LogOut, MapPin, RotateCcw,
   Search, ShieldCheck, Trash2, UserPlus, Users, Wrench, X,
-  LayoutDashboard, BarChart3, Download, Clock, TrendingUp, ArrowRight,
+  LayoutDashboard, BarChart3, Landmark, Download, Clock, TrendingUp, ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdmin, listAdmins, purgePotholes, removeAdmin, type StaffRole } from "@/lib/admin.functions";
+import { BOOKMARKLET, buildOuvidoriaReport, encodeOuvidoria, OUVIDORIA_URL } from "@/lib/ouvidoria";
 import { formatDate, HAZARDS, type Pothole, type PotholeStatus, hazardLabel, sizeLabel } from "@/lib/potholes";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -284,8 +285,8 @@ function Overview({ onGo }: { onGo: (s: Section) => void }) {
 
 function exportCsv(rows: Pothole[]) {
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Nº", "Endereço", "Status", "Tamanho", "Perigos", "Avisos", "Latitude", "Longitude", "Informado em", "Concluído em", "Equipe do reparo", "Registrado por"];
-  const lines = rows.map((p) => [p.number, p.address, STATUS_LABEL[p.status], sizeLabel(p.size), p.hazards.map(hazardLabel).join("; "), p.report_count, p.lat, p.lng, formatDate(p.created_at), p.resolved_at ? formatDate(p.resolved_at) : "", p.repaired_by, p.resolved_by_email].map(esc).join(";"));
+  const head = ["Nº", "Endereço", "Status", "Tamanho", "Perigos", "Avisos", "Latitude", "Longitude", "Informado em", "Concluído em", "Equipe do reparo", "Registrado por", "Protocolo Ouvidoria"];
+  const lines = rows.map((p) => [p.number, p.address, STATUS_LABEL[p.status], sizeLabel(p.size), p.hazards.map(hazardLabel).join("; "), p.report_count, p.lat, p.lng, formatDate(p.created_at), p.resolved_at ? formatDate(p.resolved_at) : "", p.repaired_by, p.resolved_by_email, p.ouvidoria_protocol].map(esc).join(";"));
   const blob = new Blob(["\ufeff" + [head.map(esc).join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -345,6 +346,18 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
     return true;
   };
 
+  const [ouvFor, setOuvFor] = useState<Pothole | null>(null);
+  const [protocol, setProtocol] = useState("");
+  const [onlyNotSent, setOnlyNotSent] = useState(false);
+  const saveProtocol = async () => {
+    if (!ouvFor) return;
+    setBusy(true);
+    const v = protocol.trim().slice(0, 60);
+    const ok = await update(ouvFor.id, { ouvidoria_protocol: v || null, ouvidoria_sent_at: v ? new Date().toISOString() : null }, v ? "Protocolo salvo." : "Protocolo removido.");
+    setBusy(false);
+    if (ok) setOuvFor(null);
+  };
+
   const confirmRepair = async () => {
     if (!repairFor || !repairedBy.trim()) return;
     setBusy(true);
@@ -374,7 +387,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
 
   const q = search.trim().toLowerCase();
   const list = all
-    .filter((p) => p.status === filter && (!onlyDanger || p.hazards.length > 0))
+    .filter((p) => p.status === filter && (!onlyDanger || p.hazards.length > 0) && (!onlyNotSent || !p.ouvidoria_protocol))
     .filter((p) => !q || String(p.number) === q.replace("#", "") || (p.address ?? "").toLowerCase().includes(q) || (p.repaired_by ?? "").toLowerCase().includes(q))
     .sort((a, b) => Number(b.hazards.length > 0) - Number(a.hazards.length > 0));
   const count = (s: PotholeStatus) => all.filter((p) => p.status === s).length;
@@ -386,7 +399,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
         <Stat label="Abertos" value={count("aberto")} icon={<Construction className="h-5 w-5" />} tone="bg-primary text-primary-foreground" />
         <Stat label="Perigosos" value={dangerous} icon={<AlertTriangle className="h-5 w-5" />} tone="bg-destructive text-destructive-foreground" />
         <Stat label="Consertados" value={count("consertado")} icon={<CheckCircle2 className="h-5 w-5" />} tone="bg-success text-success-foreground" />
-        <Stat label="Removidos" value={count("removido")} icon={<X className="h-5 w-5" />} tone="bg-muted text-muted-foreground" />
+        <Stat label="Abertos sem Ouvidoria" value={all.filter((p) => p.status === "aberto" && !p.ouvidoria_protocol).length} icon={<Landmark className="h-5 w-5" />} tone="bg-muted text-muted-foreground" />
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 md:flex-row md:items-center">
@@ -403,6 +416,9 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
         </div>
         <label className="flex items-center gap-2 text-sm font-medium">
           <Switch checked={onlyDanger} onCheckedChange={setOnlyDanger} /> Só perigosos
+        </label>
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <Switch checked={onlyNotSent} onCheckedChange={setOnlyNotSent} /> Não enviados à Ouvidoria
         </label>
         <Button variant="outline" onClick={() => exportCsv(list)} disabled={list.length === 0}>
           <Download className="mr-1 h-4 w-4" /> Exportar
@@ -445,7 +461,10 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
                     Informado {ageLabel(p.created_at)} ({formatDate(p.created_at)}) · {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
                   </div>
                 </div>
-                <Badge variant={p.status === "aberto" ? "default" : "secondary"}>{STATUS_LABEL[p.status]}</Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant={p.status === "aberto" ? "default" : "secondary"}>{STATUS_LABEL[p.status]}</Badge>
+                  {p.ouvidoria_protocol && <Badge variant="outline">Protocolo {p.ouvidoria_protocol}</Badge>}
+                </div>
               </div>
 
               {(p.size || p.hazards.length > 0) && (
@@ -502,6 +521,11 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
                     </Button>
                   </>
                 )}
+                {p.status !== "removido" && (
+                  <Button size="sm" variant="outline" className="w-full" onClick={() => { setProtocol(p.ouvidoria_protocol ?? ""); setOuvFor(p); }}>
+                    <Landmark className="mr-1 h-4 w-4" /> {p.ouvidoria_protocol ? "Ouvidoria · editar protocolo" : "Enviar à Ouvidoria"}
+                  </Button>
+                )}
                 {p.status !== "aberto" && (
                   <Button size="sm" variant="outline" onClick={() => update(p.id, { status: "aberto", resolved_at: null, repaired_by: null, resolved_by_email: null }, p.status === "removido" ? "Restaurado." : "Reaberto.")}>
                     <RotateCcw className="mr-1 h-4 w-4" /> {p.status === "removido" ? "Restaurar" : "Reabrir"}
@@ -533,6 +557,54 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
             <Button disabled={!repairedBy.trim() || busy} onClick={confirmRepair} className="bg-success text-success-foreground hover:bg-success/90">
               <Check className="mr-1 h-4 w-4" /> Marcar como consertado
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!ouvFor} onOpenChange={(v) => !v && setOuvFor(null)}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Enviar à Ouvidoria · #{ouvFor?.number}</DialogTitle>
+            <DialogDescription>O formulário da Prefeitura é preenchido pelo favorito. Você só marca "Não sou um robô" e clica em Registrar.</DialogDescription>
+          </DialogHeader>
+          {ouvFor && (() => {
+            const d = buildOuvidoriaReport(ouvFor, window.location.origin);
+            return (
+              <div className="space-y-4 text-sm">
+                <ol className="list-decimal space-y-2 pl-5">
+                  <li>
+                    Só na primeira vez: arraste este botão para a barra de favoritos do navegador.
+                    <div className="mt-1">
+                      <a
+                        ref={(el) => { if (el) el.setAttribute("href", BOOKMARKLET); }}
+                        onClick={(e) => { e.preventDefault(); toast.info("Arraste o botão para a barra de favoritos."); }}
+                        className="inline-block cursor-grab rounded-md bg-primary px-3 py-1.5 font-semibold text-primary-foreground"
+                      >Preencher De Olho na Rua</a>
+                    </div>
+                  </li>
+                  <li>
+                    <a className="font-semibold underline" target="_blank" rel="noreferrer" href={`${OUVIDORIA_URL}#deolho=${encodeOuvidoria(d)}`}>Abrir a Ouvidoria</a>. Se pedir, faça a Identificação (passo 1).
+                  </li>
+                  <li>No passo 2, clique no favorito <b>Preencher De Olho na Rua</b>, confira, marque "Não sou um robô" e clique em Registrar. Se o favorito pedir um código, <button type="button" className="font-semibold underline" onClick={() => navigator.clipboard?.writeText(encodeOuvidoria(d)).then(() => toast.success("Código copiado. Cole quando o favorito pedir."))}>copie o código aqui</button>.</li>
+                  <li>Cole abaixo o número de protocolo que a Prefeitura gerou.</li>
+                </ol>
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="mb-1 font-semibold">Texto que será enviado (prioridade {d.prioridade})</div>
+                  <p className="whitespace-pre-wrap">{d.endereco}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{d.relato}</p>
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => navigator.clipboard?.writeText(`${d.endereco}\n\n${d.relato}`).then(() => toast.success("Texto copiado."))}>Copiar texto</Button>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="protocol">Número de protocolo</Label>
+                  <Input id="protocol" maxLength={60} placeholder="Ex.: 12.345/2026" value={protocol} onChange={(e) => setProtocol(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">O protocolo aparece para todos no mapa público.</p>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOuvFor(null)}>Fechar</Button>
+            <Button disabled={busy} onClick={saveProtocol}>Salvar protocolo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -17,7 +17,7 @@ export const listPublicPotholes = createServerFn({ method: "GET" }).handler(asyn
   });
   const { data, error } = await sb
     .from("potholes")
-    .select("id, number, lat, lng, status, address, report_count, created_at, last_reported_at, resolved_at, size, hazards")
+    .select("id, number, lat, lng, status, address, report_count, created_at, last_reported_at, resolved_at, size, hazards, ouvidoria_protocol, ouvidoria_sent_at")
     .in("status", ["aberto", "consertado"])
     .order("created_at", { ascending: false })
     .limit(1000);

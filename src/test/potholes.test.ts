@@ -20,3 +20,22 @@ describe("regras de buracos", () => {
     expect(mergeReport({ size: null, hazards: [] }, { size: "medio", hazards: [] }).size).toBe("medio");
   });
 });
+
+import { buildOuvidoriaReport } from "@/lib/ouvidoria";
+describe("ouvidoria", () => {
+  const base = { number: 12, address: "Rua A, 10", lat: -27.1, lng: -48.9, size: null, hazards: [] as string[], report_count: 1, created_at: "2026-11-02T12:00:00Z" };
+  it("assunto Buraco, finalidade Solicitação e relato padrão", () => {
+    const r = buildOuvidoriaReport(base);
+    expect(r.assunto).toBe("Buraco");
+    expect(r.finalidade).toBe("Solicitação");
+    expect(r.relato.startsWith("Munícipe solicita reparo em buraco na via.")).toBe(true);
+    expect(r.prioridade).toBe("Baixa");
+  });
+  it("buraco com perigo vira prioridade alta e cita tamanho e riscos", () => {
+    const r = buildOuvidoriaReport({ ...base, size: "grande", hazards: ["moto"], report_count: 4 });
+    expect(r.prioridade).toBe("Alta");
+    expect(r.relato).toContain("Tamanho: grande");
+    expect(r.relato).toContain("risco para motos");
+    expect(r.relato).toContain("4 moradores");
+  });
+});

@@ -42,6 +42,8 @@ export type Database = {
           lat: number
           lng: number
           number: number
+          ouvidoria_protocol: string | null
+          ouvidoria_sent_at: string | null
           photos: string[]
           repaired_by: string | null
           report_count: number
@@ -59,6 +61,8 @@ export type Database = {
           lat: number
           lng: number
           number?: number
+          ouvidoria_protocol?: string | null
+          ouvidoria_sent_at?: string | null
           photos?: string[]
           repaired_by?: string | null
           report_count?: number
@@ -76,6 +80,8 @@ export type Database = {
           lat?: number
           lng?: number
           number?: number
+          ouvidoria_protocol?: string | null
+          ouvidoria_sent_at?: string | null
           photos?: string[]
           repaired_by?: string | null
           report_count?: number

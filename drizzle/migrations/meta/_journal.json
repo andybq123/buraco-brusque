@@ -85,6 +85,13 @@
       "when": 1794596151870,
       "tag": "0011_pothole_number",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794597648263,
+      "tag": "0012_ouvidoria_protocol",
+      "breakpoints": true
     }
   ]
 }

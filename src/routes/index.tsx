@@ -122,6 +122,7 @@ function Home() {
                 Informado em {formatDate(p.created_at)}
                 <br />
                 {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
+                {p.ouvidoria_protocol && (<><br /><span className="font-semibold">Pedido registrado na Prefeitura · protocolo {p.ouvidoria_protocol}{p.ouvidoria_sent_at ? ` · ${new Date(p.ouvidoria_sent_at).toLocaleDateString("pt-BR")}` : ""}</span></>)}
                 <div className="mt-2 flex gap-1.5">
                   <button type="button" onClick={() => copyLink(p.number)} className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold"><Copy className="h-3.5 w-3.5" /> Copiar link</button>
                   <button type="button" onClick={() => shareLink(p.number, p.address)} className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"><Share2 className="h-3.5 w-3.5" /> Compartilhar</button>
