@@ -22,7 +22,7 @@ function hasWebGL() {
 function BaseLayer() {
   const map = useMap();
   useEffect(() => {
-    const mbToken = import.meta.env.VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN as string | undefined;
+    const mbToken = import.meta.env["VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN"] as string | undefined;
     if (mbToken) {
       // Mapbox satélite com nomes de ruas
       const tiles = L.tileLayer(
