@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle, Check, CheckCircle2, Construction, ExternalLink, LogOut, MapPin, RotateCcw,
   Search, ShieldCheck, Trash2, UserPlus, Users, Wrench, X,
+  LayoutDashboard, BarChart3, Download, Clock, TrendingUp, ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -26,7 +27,7 @@ import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdmin, listAdmins, purgePotholes, removeAdmin, type StaffRole } from "@/lib/admin.functions";
-import { formatDate, type Pothole, type PotholeStatus, hazardLabel, sizeLabel } from "@/lib/potholes";
+import { formatDate, HAZARDS, type Pothole, type PotholeStatus, hazardLabel, sizeLabel } from "@/lib/potholes";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -54,6 +55,7 @@ function AdminPage() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [section, setSection] = useState<Section>("geral");
 
   const role = useQuery({
     queryKey: ["staff-role", user.id],
@@ -86,6 +88,13 @@ function AdminPage() {
   }
 
   const isAdmin = role.data === "admin";
+  const sections = [
+    { id: "geral" as const, label: "Visão geral", short: "Geral", hint: "Resumo do andamento dos reparos na cidade.", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { id: "buracos" as const, label: "Buracos", short: "Buracos", hint: "Acompanhe, conclua ou remova os avisos dos moradores.", icon: <MapPin className="h-5 w-5" /> },
+    { id: "acessos" as const, label: "Acessos", short: "Acessos", hint: "Visitas ao site, de onde vêm e quem está online.", icon: <BarChart3 className="h-5 w-5" /> },
+    ...(isAdmin ? [{ id: "usuarios" as const, label: "Usuários", short: "Usuários", hint: "Quem pode entrar no painel e o que pode fazer.", icon: <Users className="h-5 w-5" /> }] : []),
+  ];
+  const current = sections.find((x) => x.id === section) ?? sections[0]!;
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -101,7 +110,7 @@ function AdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden text-right text-xs leading-tight sm:block">
+            <div className="hidden text-right text-xs leading-tight sm:block md:hidden">
               <div className="font-semibold">{user.email}</div>
               <div className="text-secondary-foreground/70">{ROLE_LABEL[role.data]}</div>
             </div>
@@ -112,28 +121,177 @@ function AdminPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl p-4">
-        <Tabs defaultValue="buracos">
-          <TabsList>
-            <TabsTrigger value="buracos"><MapPin className="mr-1 h-4 w-4" /> Buracos</TabsTrigger>
-            <TabsTrigger value="acessos">Acessos</TabsTrigger>
-            {isAdmin && <TabsTrigger value="usuarios"><Users className="mr-1 h-4 w-4" /> Usuários</TabsTrigger>}
-          </TabsList>
-          <TabsContent value="buracos" className="mt-4">
-            <Potholes isAdmin={isAdmin} email={user.email ?? ""} />
-          </TabsContent>
-          <TabsContent value="acessos" className="mt-4">
-            <VisitsPanel />
-          </TabsContent>
-          {isAdmin && (
-            <TabsContent value="usuarios" className="mt-4">
-              <StaffUsers />
-            </TabsContent>
-          )}
-        </Tabs>
-      </main>
+      <div className="mx-auto flex max-w-7xl gap-6 p-4">
+        <aside className="hidden w-56 shrink-0 md:block">
+          <nav className="sticky top-20 space-y-1">
+            {sections.map((it) => (
+              <button
+                key={it.id}
+                onClick={() => setSection(it.id)}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${section === it.id ? "bg-card text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-card/60 hover:text-foreground"}`}
+              >
+                {it.icon} {it.label}
+              </button>
+            ))}
+            <div className="mt-6 rounded-lg border bg-card p-3 text-xs text-muted-foreground">
+              <div className="font-semibold text-foreground">{user.email}</div>
+              <div>{ROLE_LABEL[role.data]}</div>
+            </div>
+          </nav>
+        </aside>
+
+        <main className="min-w-0 flex-1 pb-20 md:pb-0">
+          <div className="mb-5">
+            <h1 className="text-2xl">{current.label}</h1>
+            <p className="text-sm text-muted-foreground">{current.hint}</p>
+          </div>
+          {section === "geral" && <Overview onGo={setSection} />}
+          {section === "buracos" && <Potholes isAdmin={isAdmin} email={user.email ?? ""} />}
+          {section === "acessos" && <VisitsPanel />}
+          {section === "usuarios" && isAdmin && <StaffUsers />}
+        </main>
+      </div>
+
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-20 grid border-t bg-card md:hidden" style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0,1fr))` }}>
+        {sections.map((it) => (
+          <button key={it.id} onClick={() => setSection(it.id)} className={`flex flex-col items-center gap-1 py-2 text-[11px] font-medium ${section === it.id ? "text-foreground" : "text-muted-foreground"}`}>
+            {it.icon} {it.short}
+          </button>
+        ))}
+      </nav>
     </div>
   );
+}
+
+type Section = "geral" | "buracos" | "acessos" | "usuarios";
+
+const adminPotholesQuery = {
+  queryKey: ["potholes", "admin"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("potholes")
+      .select("*")
+      .order("last_reported_at", { ascending: false })
+      .limit(1000);
+    if (error) throw error;
+    return data as Pothole[];
+  },
+};
+
+const DAY = 86_400_000;
+function daysSince(iso: string) {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / DAY));
+}
+function ageLabel(iso: string) {
+  const d = daysSince(iso);
+  return d === 0 ? "hoje" : d === 1 ? "há 1 dia" : `há ${d} dias`;
+}
+
+function Overview({ onGo }: { onGo: (s: Section) => void }) {
+  const { data = [], isLoading } = useQuery(adminPotholesQuery);
+  if (isLoading) return <p className="py-10 text-center text-muted-foreground">Carregando…</p>;
+  const open = data.filter((p) => p.status === "aberto");
+  const fixed = data.filter((p) => p.status === "consertado");
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const fixedMonth = fixed.filter((p) => p.resolved_at && new Date(p.resolved_at) >= monthStart).length;
+  const repairDays = fixed.filter((p) => p.resolved_at).map((p) => (new Date(p.resolved_at!).getTime() - new Date(p.created_at).getTime()) / DAY);
+  const avgRepair = repairDays.length ? repairDays.reduce((a, b) => a + b, 0) / repairDays.length : null;
+  const last7 = data.filter((p) => p.status !== "removido" && Date.now() - new Date(p.created_at).getTime() < 7 * DAY).length;
+  const oldOpen = open.filter((p) => daysSince(p.created_at) >= 30).length;
+  const valid = open.length + fixed.length;
+  const rate = valid ? Math.round((fixed.length / valid) * 100) : 0;
+
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.now() - (13 - i) * DAY);
+    const key = d.toISOString().slice(0, 10);
+    return { key, label: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }), n: data.filter((p) => p.status !== "removido" && p.created_at.slice(0, 10) === key).length };
+  });
+  const max = Math.max(1, ...days.map((d) => d.n));
+  const hazardCounts = HAZARDS.map((h) => ({ ...h, n: open.filter((p) => p.hazards.includes(h.id)).length })).sort((a, b) => b.n - a.n);
+  const hMax = Math.max(1, ...hazardCounts.map((h) => h.n));
+  const urgent = [...open].sort((a, b) => b.hazards.length - a.hazards.length || b.report_count - a.report_count || a.created_at.localeCompare(b.created_at)).slice(0, 5);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Buracos abertos" value={open.length} icon={<Construction className="h-5 w-5" />} tone="bg-primary text-primary-foreground" />
+        <Stat label="Consertados no mês" value={fixedMonth} icon={<CheckCircle2 className="h-5 w-5" />} tone="bg-success text-success-foreground" />
+        <Stat label="Novos em 7 dias" value={last7} icon={<TrendingUp className="h-5 w-5" />} tone="bg-secondary text-secondary-foreground" />
+        <Stat label="Abertos há +30 dias" value={oldOpen} icon={<Clock className="h-5 w-5" />} tone="bg-destructive text-destructive-foreground" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="rounded-xl border bg-card p-4 lg:col-span-2">
+          <h2 className="text-base">Novos avisos — últimos 14 dias</h2>
+          <div className="mt-4 flex h-40 items-end gap-1.5">
+            {days.map((d) => (
+              <div key={d.key} className="flex flex-1 flex-col items-center gap-1" title={`${d.label}: ${d.n}`}>
+                <span className="text-[10px] text-muted-foreground">{d.n || ""}</span>
+                <div className="w-full rounded-t bg-primary" style={{ height: `${(d.n / max) * 100}%`, minHeight: 2 }} />
+                <span className="text-[9px] text-muted-foreground">{d.label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="space-y-4 rounded-xl border bg-card p-4">
+          <div>
+            <h2 className="text-base">Taxa de conserto</h2>
+            <div className="mt-2 flex items-baseline gap-2"><span className="text-3xl font-bold">{rate}%</span><span className="text-xs text-muted-foreground">{fixed.length} de {valid}</span></div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-success" style={{ width: `${rate}%` }} /></div>
+          </div>
+          <div>
+            <h2 className="text-base">Tempo médio de reparo</h2>
+            <div className="mt-1 text-3xl font-bold">{avgRepair === null ? "—" : `${avgRepair.toFixed(1)} dias`}</div>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border bg-card p-4">
+          <h2 className="text-base">Perigos nos buracos abertos</h2>
+          <div className="mt-3 space-y-3">
+            {hazardCounts.map((h) => (
+              <div key={h.id}>
+                <div className="flex justify-between text-sm"><span>{h.label}</span><span className="font-semibold">{h.n}</span></div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-destructive" style={{ width: `${(h.n / hMax) * 100}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base">Prioridades</h2>
+            <Button variant="ghost" size="sm" onClick={() => onGo("buracos")}>Ver todos <ArrowRight className="ml-1 h-4 w-4" /></Button>
+          </div>
+          {urgent.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Nenhum buraco aberto.</p> : (
+            <ul className="mt-2 divide-y">
+              {urgent.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{p.address ?? "Endereço não informado"}</div>
+                    <div className="text-xs text-muted-foreground">{ageLabel(p.created_at)} · {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}</div>
+                  </div>
+                  {p.hazards.length > 0 && <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3" />{p.hazards.length}</Badge>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function exportCsv(rows: Pothole[]) {
+  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["Endereço", "Status", "Tamanho", "Perigos", "Avisos", "Latitude", "Longitude", "Informado em", "Concluído em", "Equipe do reparo", "Registrado por"];
+  const lines = rows.map((p) => [p.address, STATUS_LABEL[p.status], sizeLabel(p.size), p.hazards.map(hazardLabel).join("; "), p.report_count, p.lat, p.lng, formatDate(p.created_at), p.resolved_at ? formatDate(p.resolved_at) : "", p.repaired_by, p.resolved_by_email].map(esc).join(";"));
+  const blob = new Blob(["\ufeff" + [head.map(esc).join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `buracos-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function Stat({ label, value, icon, tone }: { label: string; value: number; icon: React.ReactNode; tone: string }) {
@@ -161,18 +319,8 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
   const [purgeIds, setPurgeIds] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const potholes = useQuery({
-    queryKey: ["potholes", "admin"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("potholes")
-        .select("*")
-        .order("last_reported_at", { ascending: false })
-        .limit(1000);
-      if (error) throw error;
-      return data as Pothole[];
-    },
-  });
+  const potholes = useQuery(adminPotholesQuery);
+
 
   const all = potholes.data ?? [];
   const allPhotos = useMemo(() => all.flatMap((p) => p.photos), [all]);
@@ -256,6 +404,9 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
         <label className="flex items-center gap-2 text-sm font-medium">
           <Switch checked={onlyDanger} onCheckedChange={setOnlyDanger} /> Só perigosos
         </label>
+        <Button variant="outline" onClick={() => exportCsv(list)} disabled={list.length === 0}>
+          <Download className="mr-1 h-4 w-4" /> Exportar
+        </Button>
         {isAdmin && filter === "removido" && list.length > 0 && (
           <Button variant="destructive" onClick={() => setPurgeIds(list.map((p) => p.id))}>
             <Trash2 className="mr-1 h-4 w-4" /> Apagar todos ({list.length})
@@ -291,7 +442,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
                 <div className="min-w-0">
                   <div className="font-semibold">{p.address ?? "Endereço não informado"}</div>
                   <div className="text-xs text-muted-foreground">
-                    Informado em {formatDate(p.created_at)} · {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
+                    Informado {ageLabel(p.created_at)} ({formatDate(p.created_at)}) · {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
                   </div>
                 </div>
                 <Badge variant={p.status === "aberto" ? "default" : "secondary"}>{STATUS_LABEL[p.status]}</Badge>
