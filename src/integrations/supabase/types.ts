@@ -155,6 +155,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      inside_brusque: { Args: { _lat: number; _lng: number }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       report_pothole: {
         Args: {

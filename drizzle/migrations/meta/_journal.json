@@ -71,6 +71,13 @@
       "when": 1794595556356,
       "tag": "0009_remove_public_photo_upload",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794595778841,
+      "tag": "0010_brusque_polygon_check",
+      "breakpoints": true
     }
   ]
 }

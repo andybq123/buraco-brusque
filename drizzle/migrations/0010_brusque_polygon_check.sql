@@ -1,0 +1,53 @@
+CREATE OR REPLACE FUNCTION public.inside_brusque(_lat double precision, _lng double precision)
+RETURNS boolean LANGUAGE plpgsql IMMUTABLE SET search_path TO 'public' AS $f$
+DECLARE a float8[] := ARRAY[-27.15477,-49.02333,-27.1577,-49.01967,-27.15872,-49.01974,-27.1599,-49.02213,-27.16086,-49.02228,-27.16139,-49.01947,-27.16384,-49.01765,-27.164,-49.007,-27.157,-49.005,-27.153,-48.989,-27.16112,-48.97679,-27.182,-48.987,-27.201,-49.008,-27.232,-49.008,-27.242,-49.023,-27.256,-49.021,-27.253,-49.004,-27.247,-48.996,-27.247,-48.986,-27.237,-48.971,-27.223,-48.958,-27.212,-48.934,-27.205,-48.932,-27.203,-48.934,-27.201,-48.931,-27.197,-48.914,-27.189,-48.906,-27.19,-48.898,-27.182,-48.894,-27.183,-48.882,-27.177,-48.879,-27.17392,-48.87285,-27.175,-48.872,-27.168,-48.864,-27.166,-48.867,-27.163,-48.864,-27.156,-48.842,-27.138,-48.821,-27.135,-48.812,-27.127,-48.803,-27.12,-48.806,-27.11,-48.794,-27.104,-48.798,-27.096,-48.79,-27.089,-48.808,-27.073,-48.824,-27.073,-48.837,-27.07057,-48.83852,-27.06843,-48.84151,-27.06751,-48.84493,-27.06387,-48.84583,-27.05752,-48.8493,-27.05703,-48.85044,-27.05423,-48.85182,-27.05241,-48.85506,-27.05014,-48.85453,-27.0491,-48.85599,-27.0481,-48.85472,-27.04632,-48.85539,-27.04569,-48.85619,-27.046,-48.85759,-27.04386,-48.85968,-27.04369,-48.86264,-27.04008,-48.86253,-27.03897,-48.86412,-27.03506,-48.86274,-27.03345,-48.86371,-27.03342,-48.85728,-27.03124,-48.85637,-27.02663,-48.85197,-27.025,-48.855,-27.012,-48.869,-27.003,-48.866,-26.999,-48.871,-26.99891,-48.87889,-27.001,-48.883,-27.002,-48.888,-27.011,-48.895,-27.011,-48.909,-27.02,-48.913,-27.019,-48.926,-27.028,-48.935,-27.033,-48.935,-27.046,-48.925,-27.05,-48.93,-27.049,-48.935,-27.054,-48.939,-27.05922,-48.93495,-27.06007,-48.9351,-27.06156,-48.9394,-27.06644,-48.94484,-27.06949,-48.95066,-27.07324,-48.95059,-27.07516,-48.95201,-27.07704,-48.95203,-27.07993,-48.95087,-27.08387,-48.94636,-27.08572,-48.95102,-27.09619,-48.94945,-27.10977,-48.95712,-27.11096,-48.95813,-27.11284,-48.96578,-27.117,-48.971,-27.121,-48.982,-27.135,-48.977,-27.14375,-48.97736,-27.1451,-48.97586,-27.14606,-48.97597,-27.14602,-48.97804,-27.14408,-48.97844,-27.1442,-48.98137,-27.1423,-48.98035,-27.13916,-48.98331,-27.14328,-48.98845,-27.14522,-48.98791,-27.1457,-48.98844,-27.14616,-48.99103,-27.14543,-48.99449,-27.1475,-48.99891,-27.14611,-49.00123,-27.14323,-49.00352,-27.14388,-49.00699,-27.14239,-49.00925,-27.14234,-49.01228,-27.14492,-49.01601,-27.144,-49.01897,-27.14492,-49.0214,-27.14641,-49.02107,-27.14749,-49.0179,-27.15029,-49.01451,-27.15566,-49.0184,-27.15552,-49.01973,-27.15353,-49.01991,-27.15378,-49.02229,-27.15477,-49.02333]::float8[]; n int; i int; j int; inside boolean := false; yi float8; xi float8; yj float8; xj float8;
+BEGIN
+  IF _lat IS NULL OR _lng IS NULL THEN RETURN false; END IF;
+  n := array_length(a,1)/2; j := n;
+  FOR i IN 1..n LOOP
+    yi := a[2*i-1]; xi := a[2*i]; yj := a[2*j-1]; xj := a[2*j];
+    IF ((yi > _lat) <> (yj > _lat)) AND (_lng < (xj - xi) * (_lat - yi) / (yj - yi) + xi) THEN inside := NOT inside; END IF;
+    j := i;
+  END LOOP;
+  RETURN inside;
+END $f$;
+
+CREATE OR REPLACE FUNCTION public.report_pothole(_lat double precision, _lng double precision, _photo text DEFAULT NULL::text, _address text DEFAULT NULL::text, _size text DEFAULT NULL::text, _hazards text[] DEFAULT '{}'::text[])
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  existing public.potholes;
+  new_id uuid;
+  rank_new int;
+  rank_old int;
+BEGIN
+  IF NOT public.inside_brusque(_lat, _lng) THEN
+    RAISE EXCEPTION 'fora_de_brusque';
+  END IF;
+  IF _photo IS NOT NULL AND _photo !~ '^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$' THEN _photo := NULL; END IF;
+  _address := nullif(left(btrim(coalesce(_address,'')), 200), '');
+  IF _size IS NOT NULL AND _size NOT IN ('pequeno','medio','grande') THEN _size := NULL; END IF;
+  _hazards := coalesce(ARRAY(SELECT DISTINCT h FROM unnest(coalesce(_hazards,'{}')) h WHERE h IN ('moto','pneu','noite','agua') ORDER BY h), '{}');
+  SELECT * INTO existing FROM public.potholes p
+   WHERE p.status = 'aberto'
+     AND 6371000 * 2 * asin(sqrt(power(sin(radians(p.lat - _lat)/2),2) + cos(radians(_lat))*cos(radians(p.lat))*power(sin(radians(p.lng - _lng)/2),2))) <= 20
+   ORDER BY power(p.lat - _lat,2) + power(p.lng - _lng,2) LIMIT 1;
+  IF FOUND THEN
+    rank_new := CASE _size WHEN 'pequeno' THEN 1 WHEN 'medio' THEN 2 WHEN 'grande' THEN 3 ELSE 0 END;
+    rank_old := CASE existing.size WHEN 'pequeno' THEN 1 WHEN 'medio' THEN 2 WHEN 'grande' THEN 3 ELSE 0 END;
+    UPDATE public.potholes SET report_count = report_count + 1, last_reported_at = now(),
+      address = coalesce(address, _address),
+      size = CASE WHEN rank_new > rank_old THEN _size ELSE size END,
+      hazards = ARRAY(SELECT DISTINCT h FROM unnest(hazards || _hazards) h ORDER BY h),
+      photos = CASE WHEN _photo IS NULL OR coalesce(array_length(photos,1),0) >= 10 THEN photos ELSE array_append(photos, _photo) END
+     WHERE id = existing.id;
+    RETURN json_build_object('id', existing.id, 'grouped', true);
+  END IF;
+  INSERT INTO public.potholes(lat, lng, photos, address, size, hazards)
+  VALUES (_lat, _lng, CASE WHEN _photo IS NULL THEN '{}' ELSE ARRAY[_photo] END, _address, _size, _hazards)
+  RETURNING id INTO new_id;
+  RETURN json_build_object('id', new_id, 'grouped', false);
+END $function$;

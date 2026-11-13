@@ -11,6 +11,7 @@ describe("regras de buracos", () => {
   it("aceita só locais em Brusque", () => {
     expect(isInsideBrusque(-27.0977, -48.9175)).toBe(true);
     expect(isInsideBrusque(-26.9194, -49.0661)).toBe(false); // Blumenau
+    expect(isInsideBrusque(-27.0858, -48.9811)).toBe(false); // Guabiruba (dentro do retângulo, fora do município)
   });
   it("ao agrupar fica o maior tamanho e somam-se os perigos", () => {
     const r = mergeReport({ size: "grande", hazards: ["moto"] }, { size: "pequeno", hazards: ["agua", "moto"] });

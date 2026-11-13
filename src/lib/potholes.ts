@@ -1,3 +1,4 @@
+import { BRUSQUE_POLYGON } from "./brusque-boundary";
 export type PotholeStatus = "aberto" | "consertado" | "removido";
 
 export interface Pothole {
@@ -20,15 +21,19 @@ export interface Pothole {
 export const BRUSQUE_CENTER: [number, number] = [-27.0977, -48.9175];
 
 /** Limites aproximados do município de Brusque (mesmos usados no banco). */
-export const BRUSQUE_BOUNDS = { minLat: -27.25, maxLat: -26.95, minLng: -49.1, maxLng: -48.75 };
+export const BRUSQUE_BOUNDS = { minLat: -27.257, maxLat: -26.998, minLng: -49.024, maxLng: -48.789 };
 
+/** Ponto dentro do contorno real do município (mesma regra do banco). */
 export function isInsideBrusque(lat: number, lng: number) {
-  return (
-    lat >= BRUSQUE_BOUNDS.minLat &&
-    lat <= BRUSQUE_BOUNDS.maxLat &&
-    lng >= BRUSQUE_BOUNDS.minLng &&
-    lng <= BRUSQUE_BOUNDS.maxLng
-  );
+  if (lat < BRUSQUE_BOUNDS.minLat || lat > BRUSQUE_BOUNDS.maxLat || lng < BRUSQUE_BOUNDS.minLng || lng > BRUSQUE_BOUNDS.maxLng) return false;
+  let inside = false;
+  const poly = BRUSQUE_POLYGON;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [yi, xi] = poly[i]!;
+    const [yj, xj] = poly[j]!;
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 /** Raio (metros) em que um novo envio é agrupado a um buraco aberto existente. */

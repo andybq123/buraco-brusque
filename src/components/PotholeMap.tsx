@@ -1,4 +1,5 @@
-import { MapContainer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polygon, Popup, useMap, useMapEvents } from "react-leaflet";
+import { BRUSQUE_POLYGON } from "@/lib/brusque-boundary";
 import bonequinho from "@/assets/mascote.webp";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -64,7 +65,20 @@ function BaseLayer() {
   return null;
 }
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { BRUSQUE_CENTER, isInsideBrusque } from "@/lib/potholes";
+import { BRUSQUE_BOUNDS, BRUSQUE_CENTER, isInsideBrusque } from "@/lib/potholes";
+
+const WORLD: [number, number][] = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
+const MAX_BOUNDS = L.latLngBounds([BRUSQUE_BOUNDS.minLat - 0.03, BRUSQUE_BOUNDS.minLng - 0.04], [BRUSQUE_BOUNDS.maxLat + 0.03, BRUSQUE_BOUNDS.maxLng + 0.04]);
+
+/** Escurece tudo fora de Brusque e desenha a divisa. */
+function CityMask() {
+  return (
+    <>
+      <Polygon positions={[WORLD, BRUSQUE_POLYGON]} interactive={false} pathOptions={{ stroke: false, fillColor: "#0b0b0b", fillOpacity: 0.72 }} />
+      <Polygon positions={BRUSQUE_POLYGON} interactive={false} pathOptions={{ color: "#ffd60a", weight: 3, dashArray: "8 6", fill: false }} />
+    </>
+  );
+}
 import { toast } from "sonner";
 
 export interface MapPoint {
@@ -121,6 +135,7 @@ function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, n
     },
   });
   const first = useRef(true);
+  const lastOk = useRef(L.latLng(pos[0], pos[1]));
   useEffect(() => {
     if (first.current || !map.getBounds().pad(-0.2).contains(pos)) map.flyTo(pos, Math.max(map.getZoom(), 17));
     first.current = false;
@@ -133,14 +148,25 @@ function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, n
       autoPan
       zIndexOffset={1000}
       eventHandlers={{
-        dragstart: (e) => (e.target as L.Marker).getElement()?.classList.add("buddy-dragging"),
+        dragstart: (e) => {
+          (e.target as L.Marker).getElement()?.classList.add("buddy-dragging");
+          lastOk.current = L.latLng(pos[0], pos[1]);
+        },
+        drag: (e) => {
+          const m = e.target as L.Marker;
+          const ll = m.getLatLng();
+          if (isInsideBrusque(ll.lat, ll.lng)) lastOk.current = ll;
+          else m.setLatLng(lastOk.current);
+        },
         dragend: (e) => {
           const m = e.target as L.Marker;
           m.getElement()?.classList.remove("buddy-dragging");
           const ll = m.getLatLng();
           if (isInsideBrusque(ll.lat, ll.lng)) onMove([ll.lat, ll.lng]);
           else {
-            m.setLatLng(pos);
+            const ok = lastOk.current;
+            m.setLatLng(ok);
+            onMove([ok.lat, ok.lng]);
             toast.error("Só é possível marcar buracos dentro de Brusque.");
           }
         },
@@ -161,8 +187,9 @@ export default function PotholeMap({
   placing?: { pos: [number, number]; onMove: (p: [number, number]) => void } | null;
 }) {
   return (
-    <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false} tapTolerance={20} maxZoom={19}>
+    <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false} tapTolerance={20} maxZoom={19} minZoom={12} maxBounds={MAX_BOUNDS} maxBoundsViscosity={1}>
       <BaseLayer />
+      <CityMask />
       <FlyTo target={focus ?? null} />
       {points.map((p) => (
         <Marker

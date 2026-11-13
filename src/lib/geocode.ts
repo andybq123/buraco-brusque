@@ -1,7 +1,7 @@
 /** Endereços via OpenStreetMap (Nominatim). Só no navegador. */
 const BASE = "https://nominatim.openstreetmap.org";
 // Caixa de Brusque: oeste, norte, leste, sul
-const VIEWBOX = "-49.10,-26.95,-48.75,-27.25";
+const VIEWBOX = "-49.03,-26.99,-48.78,-27.26";
 
 type NomAddr = { road?: string; pedestrian?: string; house_number?: string; suburb?: string; neighbourhood?: string; city_district?: string };
 
