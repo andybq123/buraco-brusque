@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "anyone upload photo" ON storage.objects;

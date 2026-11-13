@@ -64,6 +64,13 @@
       "when": 1794514112519,
       "tag": "0008_site_visits_geo_live",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794595556356,
+      "tag": "0009_remove_public_photo_upload",
+      "breakpoints": true
     }
   ]
 }

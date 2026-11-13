@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { distanceMeters, GROUP_RADIUS_M, HAZARDS, isInsideBrusque, SIZES, type PotholeSize } from "@/lib/potholes";
 import { cn } from "@/lib/utils";
 import { isAcceptedImage, preparePhoto } from "@/lib/photo";
+import { createPhotoUploadUrl } from "@/lib/photo-upload.functions";
 
 function uuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -79,11 +80,15 @@ export function ReportSheet({
       if (photo) {
         const blob = await preparePhoto(photo);
         if (blob) {
-          photoName = `${uuid()}.jpg`;
-          const { error } = await supabase.storage
-            .from("fotos")
-            .upload(photoName, blob, { contentType: blob.type || "image/jpeg" });
-          if (error) photoName = null;
+          try {
+            const up = await createPhotoUploadUrl();
+            const { error } = await supabase.storage
+              .from("fotos")
+              .uploadToSignedUrl(up.path, up.token, blob, { contentType: "image/jpeg" });
+            photoName = error ? null : up.path;
+          } catch {
+            photoName = null;
+          }
         }
         if (!photoName) toast.warning("Não deu para enviar a foto, mas o buraco será registrado.");
       }
