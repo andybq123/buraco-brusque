@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Crosshair, Loader2, MapPin, Search, X } from "lucide-react";
+import { Crosshair, Loader2, MapPin, Navigation, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BRUSQUE_CENTER, isInsideBrusque } from "@/lib/potholes";
+import { BRUSQUE_CENTER, distanceMeters, isInsideBrusque } from "@/lib/potholes";
 import { reverseGeocode, searchStreet, type StreetHit } from "@/lib/geocode";
 
 /** Painel de marcação: GPS → endereço; sem GPS, busca pela rua ou arrasta o bonequinho. */
 export function PlacePanel({
   pos,
   setPos,
+  follow,
+  setFollow,
   address,
   setAddress,
   onCancel,
@@ -16,6 +18,8 @@ export function PlacePanel({
 }: {
   pos: [number, number] | null;
   setPos: (p: [number, number]) => void;
+  follow: boolean;
+  setFollow: (v: boolean) => void;
   address: string | null;
   setAddress: (a: string | null) => void;
   onCancel: () => void;
@@ -29,6 +33,30 @@ export function PlacePanel({
   const [hits, setHits] = useState<StreetHit[]>([]);
   const [searching, setSearching] = useState(false);
   const typedRef = useRef(false);
+
+  const lastFix = useRef<[number, number] | null>(null);
+  const followRef = useRef(follow);
+  followRef.current = follow;
+
+  // Seguir a pessoa enquanto ela anda (até ela arrastar o bonequinho)
+  useEffect(() => {
+    if (!follow || !("geolocation" in navigator)) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        if (!followRef.current) return;
+        const ll: [number, number] = [p.coords.latitude, p.coords.longitude];
+        if (!isInsideBrusque(ll[0], ll[1])) return;
+        if (p.coords.accuracy > 60) return;
+        const last = lastFix.current;
+        if (last && distanceMeters(last[0], last[1], ll[0], ll[1]) < 8) return;
+        lastFix.current = ll;
+        setPos(ll);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [follow, setPos]);
 
   const locate = () => {
     setGeoError(null);
@@ -49,7 +77,9 @@ export function PlacePanel({
           if (!pos) setPos(BRUSQUE_CENTER);
           return;
         }
+        lastFix.current = ll;
         setPos(ll);
+        setFollow(true);
       },
       (e) => {
         setLocating(false);
@@ -119,7 +149,7 @@ export function PlacePanel({
     <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 safe-bottom">
       <div className="w-full max-w-md space-y-3 rounded-3xl bg-card p-4 text-card-foreground shadow-xl">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold">Arraste o bonequinho até o buraco ou toque no mapa.</p>
+          <p className="text-sm font-semibold">Arraste o bonequinho até o buraco — ele se prende na rua.</p>
           <button aria-label="Cancelar" onClick={onCancel} className="-m-1 rounded-full p-1">
             <X className="h-5 w-5" />
           </button>
@@ -139,6 +169,13 @@ export function PlacePanel({
             {outside && <div className="mt-1 text-destructive">Esse ponto fica fora de Brusque.</div>}
           </div>
         </div>
+
+        {follow && !locating && !geoError && (
+          <div className="flex items-center justify-between gap-2 rounded-2xl bg-primary/15 px-3 py-2 text-sm">
+            <span className="flex items-center gap-2 font-semibold"><Navigation className="h-4 w-4" /> Seguindo você enquanto anda</span>
+            <button className="text-xs font-semibold underline" onClick={() => setFollow(false)}>Parar</button>
+          </div>
+        )}
 
         {showSearch ? (
           <div className="relative">
@@ -160,6 +197,7 @@ export function PlacePanel({
                       onClick={() => {
                         typedRef.current = true;
                         setAddress(h.label);
+                        setFollow(false);
                         setPos([h.lat, h.lng]);
                         setHits([]);
                         setQ("");

@@ -22,6 +22,23 @@ function hasWebGL() {
 function BaseLayer() {
   const map = useMap();
   useEffect(() => {
+    const mbToken = import.meta.env.VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN as string | undefined;
+    if (mbToken) {
+      // Mapbox satélite com nomes de ruas
+      const tiles = L.tileLayer(
+        `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`,
+        {
+          tileSize: 512,
+          zoomOffset: -1,
+          maxZoom: 20,
+          attribution:
+            '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        },
+      ).addTo(map);
+      return () => {
+        map.removeLayer(tiles);
+      };
+    }
     if (!hasWebGL()) {
       // Aparelhos antigos sem WebGL: mapa em imagens comuns
       const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {

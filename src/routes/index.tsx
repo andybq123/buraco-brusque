@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { snapToRoad } from "@/lib/snap";
+import { isInsideBrusque } from "@/lib/potholes";
 import { useQuery } from "@tanstack/react-query";
 import { PlacePanel } from "@/components/PlacePanel";
 import { Construction, Plus, ShieldCheck } from "lucide-react";
@@ -40,7 +42,17 @@ function Home() {
   const [placing, setPlacing] = useState(false);
   const [pos, setPos] = useState<[number, number] | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [follow, setFollow] = useState(true);
   const busy = placing || open;
+  const seq = useRef(0);
+  /** Coloca o bonequinho e depois o prende na rua mais próxima. */
+  const placeAt = useCallback((p: [number, number]) => {
+    const n = ++seq.current;
+    setPos(p);
+    snapToRoad(p[0], p[1]).then((s) => {
+      if (n === seq.current && isInsideBrusque(s[0], s[1])) setPos(s);
+    });
+  }, []);
   const { data = [] } = useQuery({
     ...potholesQuery,
     refetchInterval: busy ? false : REFRESH_MS,
@@ -56,7 +68,7 @@ function Home() {
       <div className="absolute inset-0">
         <LazyMap
           focus={focus}
-          placing={(placing || open) && pos ? { pos, onMove: (p) => !open && setPos(p) } : null}
+          placing={(placing || open) && pos ? { pos, onMove: (p) => { if (!open) { setFollow(false); placeAt(p); } } } : null}
           points={data.map((p) => ({
             id: p.id,
             lat: p.lat,
@@ -117,7 +129,9 @@ function Home() {
       {placing ? (
         <PlacePanel
           pos={pos}
-          setPos={setPos}
+          setPos={placeAt}
+          follow={follow}
+          setFollow={setFollow}
           address={address}
           setAddress={setAddress}
           onCancel={() => {
@@ -135,6 +149,7 @@ function Home() {
           onClick={() => {
             setAddress(null);
             setPos(null);
+            setFollow(true);
             setPlacing(true);
             window.__lovableEvents?.track?.("project.report_started", {});
           }}
