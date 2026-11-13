@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { snapToRoad } from "@/lib/snap";
 import { isInsideBrusque } from "@/lib/potholes";
 import { useQuery } from "@tanstack/react-query";
 import { PlacePanel } from "@/components/PlacePanel";
-import { Construction, Plus, ShieldCheck } from "lucide-react";
+import { Construction, Copy, Plus, Share2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LazyMap } from "@/components/LazyMap";
 import { ReportSheet } from "@/components/ReportSheet";
@@ -31,9 +32,37 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { b?: number } => {
+    const n = Number(s["b"]);
+    return Number.isInteger(n) && n > 0 ? { b: n } : {};
+  },
   loader: ({ context }) => context.queryClient.ensureQueryData(potholesQuery),
   component: Home,
 });
+
+function potholeLink(n: number) {
+  return `${window.location.origin}/?b=${n}`;
+}
+
+async function copyLink(n: number) {
+  const url = potholeLink(n);
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success(`Link do buraco nº ${n} copiado.`);
+  } catch {
+    window.prompt("Copie o link:", url);
+  }
+}
+
+async function shareLink(n: number, address: string | null) {
+  const url = potholeLink(n);
+  const text = `Buraco nº ${n}${address ? ` — ${address}` : ""} no De Olho na Rua`;
+  if (navigator.share) {
+    try { await navigator.share({ title: "De Olho na Rua", text, url }); } catch { /* cancelado */ }
+  } else {
+    copyLink(n);
+  }
+}
 
 function Home() {
   useSuspenseQuery(potholesQuery);
@@ -59,7 +88,14 @@ function Home() {
     refetchOnWindowFocus: !busy,
     refetchIntervalInBackground: false,
   });
+  const { b } = Route.useSearch();
+  const linked = b ? data.find((p) => p.number === b) : undefined;
   const [focus, setFocus] = useState<[number, number] | null>(null);
+  const linkedFocus = useRef(false);
+  useEffect(() => {
+    if (linked && !linkedFocus.current) { linkedFocus.current = true; setFocus([linked.lat, linked.lng]); }
+    else if (b && data.length && !linked && !linkedFocus.current) { linkedFocus.current = true; toast.error(`Buraco nº ${b} não encontrado.`); }
+  }, [linked, b, data.length]);
   const abertos = data.filter((p) => p.status === "aberto").length;
   const consertados = data.length - abertos;
 
@@ -68,6 +104,7 @@ function Home() {
       <div className="absolute inset-0">
         <LazyMap
           focus={focus}
+          openId={linked?.id ?? null}
           placing={(placing || open) && pos ? { pos, onMove: (p) => { if (!open) { setFollow(false); placeAt(p); } } } : null}
           points={data.map((p) => ({
             id: p.id,
@@ -85,6 +122,10 @@ function Home() {
                 Informado em {formatDate(p.created_at)}
                 <br />
                 {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
+                <div className="mt-2 flex gap-1.5">
+                  <button type="button" onClick={() => copyLink(p.number)} className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold"><Copy className="h-3.5 w-3.5" /> Copiar link</button>
+                  <button type="button" onClick={() => shareLink(p.number, p.address)} className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"><Share2 className="h-3.5 w-3.5" /> Compartilhar</button>
+                </div>
               </div>
             ),
           }))}

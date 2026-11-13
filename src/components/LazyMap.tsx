@@ -6,6 +6,7 @@ const PotholeMap = lazy(() => import("./PotholeMap"));
 
 export function LazyMap(props: {
   points: MapPoint[];
+  openId?: string | null;
   focus?: [number, number] | null;
   onSelect?: (id: string) => void;
   placing?: { pos: [number, number]; onMove: (p: [number, number]) => void } | null;

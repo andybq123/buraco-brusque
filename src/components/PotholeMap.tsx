@@ -180,12 +180,15 @@ export default function PotholeMap({
   focus,
   onSelect,
   placing,
+  openId,
 }: {
+  openId?: string | null;
   points: MapPoint[];
   focus?: [number, number] | null;
   onSelect?: (id: string) => void;
   placing?: { pos: [number, number]; onMove: (p: [number, number]) => void } | null;
 }) {
+  const opened = useRef<string | null>(null);
   return (
     <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false} tapTolerance={20} maxZoom={19} minZoom={12} maxBounds={MAX_BOUNDS} maxBoundsViscosity={1}>
       <BaseLayer />
@@ -194,6 +197,7 @@ export default function PotholeMap({
       {points.map((p) => (
         <Marker
           key={p.id}
+          ref={(m) => { if (m && openId === p.id && opened.current !== p.id) { opened.current = p.id; setTimeout(() => m.openPopup(), 900); } }}
           position={[p.lat, p.lng]}
           icon={potholeIcon(p.status, p.danger)}
           opacity={placing ? 0.6 : 1}
