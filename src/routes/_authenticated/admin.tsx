@@ -318,6 +318,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
   const [focus, setFocus] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [onlyDanger, setOnlyDanger] = useState(false);
+  const [kindTab, setKindTab] = useState<"buraco" | "iluminacao">("buraco");
   const [search, setSearch] = useState("");
   const [repairFor, setRepairFor] = useState<Pothole | null>(null);
   const [repairedBy, setRepairedBy] = useState("");
@@ -327,8 +328,8 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
   const potholes = useQuery(adminPotholesQuery);
 
 
-  const all = potholes.data ?? [];
-  const allPhotos = useMemo(() => all.flatMap((p) => p.photos), [all]);
+  const allItems = potholes.data ?? [];
+  const allPhotos = useMemo(() => allItems.flatMap((p) => p.photos), [allItems]);
   const photoUrls = useQuery({
     queryKey: ["photo-urls", allPhotos.join(",")],
     enabled: allPhotos.length > 0,
@@ -390,6 +391,8 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
   };
 
   const q = search.trim().toLowerCase();
+  const kindAll = allItems.filter((p) => (p.kind === "iluminacao" ? "iluminacao" : "buraco") === kindTab);
+  const all = kindAll;
   const list = all
     .filter((p) => p.status === filter && (!onlyDanger || p.hazards.length > 0) && (!onlyNotSent || !p.ouvidoria_protocol))
     .filter((p) => !q || String(p.number) === q.replace("#", "") || (p.address ?? "").toLowerCase().includes(q) || (p.repaired_by ?? "").toLowerCase().includes(q))
@@ -399,6 +402,12 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
 
   return (
     <div className="space-y-4">
+      <Tabs value={kindTab} onValueChange={(v) => { setKindTab(v as "buraco" | "iluminacao"); setSelected(null); setFocus(null); }}>
+        <TabsList className="h-11">
+          <TabsTrigger value="buraco" className="px-4">Buracos ({allItems.filter((p) => p.kind !== "iluminacao" && p.status === "aberto").length})</TabsTrigger>
+          <TabsTrigger value="iluminacao" className="px-4">Iluminação pública ({allItems.filter((p) => p.kind === "iluminacao" && p.status === "aberto").length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Abertos" value={count("aberto")} icon={<Construction className="h-5 w-5" />} tone="bg-primary text-primary-foreground" />
         <Stat label="Perigosos" value={dangerous} icon={<AlertTriangle className="h-5 w-5" />} tone="bg-destructive text-destructive-foreground" />
