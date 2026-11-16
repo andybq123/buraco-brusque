@@ -59,12 +59,17 @@ async function bridge<T>(path: string, payload: unknown): Promise<T> {
   const base = (process.env["MAIL_BRIDGE_URL"] || "http://127.0.0.1:3001").replace(/\/$/, "");
   const token = process.env["MAIL_BRIDGE_TOKEN"];
   if (!token) throw new Error("A ponte de e-mail não está instalada neste servidor (falta MAIL_BRIDGE_TOKEN). Instale a ponte na VPS conforme deploy/email.md e reinicie o app.");
-  const response = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(35_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(35_000),
+    });
+  } catch {
+    throw new Error("A ponte de e-mail não respondeu. Verifique na VPS se o serviço de-olho-mail está ativo (systemctl status de-olho-mail).");
+  }
   const raw = await response.text();
   let value: { error?: string } & Record<string, unknown> = {};
   try { value = JSON.parse(raw) as typeof value; } catch { /* erro seguro abaixo */ }
