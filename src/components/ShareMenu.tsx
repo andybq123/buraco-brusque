@@ -19,6 +19,22 @@ function kindArticle(kind: string) {
 }
 
 /**
+ * Endereço que abre o WhatsApp direto no celular, sem passar pelo navegador.
+ * Android: link "intent" que chama o app (e cai no wa.me se ele não existir).
+ * iOS e demais: wa.me, que no iPhone é tratado como link universal e abre o app.
+ * Sem número no endereço: o WhatsApp abre na lista de conversas para escolher
+ * com quem enviar, já com o texto pronto.
+ */
+function whatsappHref(text: string, url: string) {
+  const enc = encodeURIComponent(`${text}\n${url}`);
+  const web = `https://wa.me/?text=${enc}`;
+  if (typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent)) {
+    return `intent://send?text=${enc}#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+  }
+  return web;
+}
+
+/**
  * Botão "Compartilhar" que abre atalhos: copiar link, WhatsApp, e-mail e
  * as opções nativas do aparelho (quando existirem).
  */
@@ -98,8 +114,8 @@ export function ShareMenu({ number, address, kind }: Props) {
           </button>
 
           <a
-            href={`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`}
-            target="_blank"
+            href={whatsappHref(text, url)}
+            {...(whatsappHref(text, url).startsWith("intent://") ? {} : { target: "_blank" })}
             rel="noopener noreferrer"
             onClick={() => setOpen(false)}
             className={item}
