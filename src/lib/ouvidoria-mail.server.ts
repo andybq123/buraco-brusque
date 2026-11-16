@@ -58,7 +58,7 @@ function connectionOf(s: SettingsRow): MailConnection | null {
 async function bridge<T>(path: string, payload: unknown): Promise<T> {
   const base = (process.env["MAIL_BRIDGE_URL"] || "http://127.0.0.1:3001").replace(/\/$/, "");
   const token = process.env["MAIL_BRIDGE_TOKEN"];
-  if (!token) throw new Error("O serviço de e-mail ainda não está conectado no servidor.");
+  if (!token) throw new Error("A ponte de e-mail não está instalada neste servidor (falta MAIL_BRIDGE_TOKEN). Instale a ponte na VPS conforme deploy/email.md e reinicie o app.");
   const response = await fetch(`${base}${path}`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
