@@ -6,7 +6,8 @@ import { snapToRoad } from "@/lib/snap";
 import { isInsideBrusque } from "@/lib/potholes";
 import { useQuery } from "@tanstack/react-query";
 import { PlacePanel } from "@/components/PlacePanel";
-import { Copy, Plus, Share2, ShieldCheck } from "lucide-react";
+import { Plus, ShieldCheck } from "lucide-react";
+import { ShareMenu } from "@/components/ShareMenu";
 import logoLupa from "@/assets/logo-lupa.webp";
 import { Button } from "@/components/ui/button";
 import { LazyMap } from "@/components/LazyMap";
@@ -40,30 +41,6 @@ export const Route = createFileRoute("/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(potholesQuery),
   component: Home,
 });
-
-function potholeLink(n: number) {
-  return `${window.location.origin}/?b=${n}`;
-}
-
-async function copyLink(n: number) {
-  const url = potholeLink(n);
-  try {
-    await navigator.clipboard.writeText(url);
-    toast.success(`Link do buraco nº ${n} copiado.`);
-  } catch {
-    window.prompt("Copie o link:", url);
-  }
-}
-
-async function shareLink(n: number, address: string | null) {
-  const url = potholeLink(n);
-  const text = `Buraco nº ${n}${address ? ` — ${address}` : ""} no De Olho na Rua`;
-  if (navigator.share) {
-    try { await navigator.share({ title: "De Olho na Rua", text, url }); } catch { /* cancelado */ }
-  } else {
-    copyLink(n);
-  }
-}
 
 function Home() {
   useSuspenseQuery(potholesQuery);
@@ -125,10 +102,7 @@ function Home() {
                 <br />
                 {p.report_count} {p.report_count === 1 ? "aviso" : "avisos"}
                 {p.ouvidoria_protocol && (<><br /><span className="font-semibold">Pedido registrado na Prefeitura · protocolo {p.ouvidoria_protocol}{p.ouvidoria_sent_at ? ` · ${new Date(p.ouvidoria_sent_at).toLocaleDateString("pt-BR")}` : ""}</span></>)}
-                <div className="mt-2 flex gap-1.5">
-                  <button type="button" onClick={() => copyLink(p.number)} className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold"><Copy className="h-3.5 w-3.5" /> Copiar link</button>
-                  <button type="button" onClick={() => shareLink(p.number, p.address)} className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"><Share2 className="h-3.5 w-3.5" /> Compartilhar</button>
-                </div>
+                <ShareMenu number={p.number} address={p.address} kind={p.kind} />
               </div>
             ),
           }))}
