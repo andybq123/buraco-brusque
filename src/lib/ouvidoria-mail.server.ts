@@ -58,7 +58,7 @@ function connectionOf(s: SettingsRow): MailConnection | null {
 async function bridge<T>(path: string, payload: unknown): Promise<T> {
   const base = (process.env["MAIL_BRIDGE_URL"] || "http://127.0.0.1:3001").replace(/\/$/, "");
   const token = process.env["MAIL_BRIDGE_TOKEN"];
-  if (!token) throw new Error("A ponte de e-mail não está instalada neste servidor (falta MAIL_BRIDGE_TOKEN). Instale a ponte na VPS conforme deploy/email.md e reinicie o app.");
+  if (!token) throw new Error("A ponte de e-mail não está instalada neste servidor (falta MAIL_BRIDGE_TOKEN). Na VPS, rode como root: de-olho-email-reparar (ou bash deploy/instalar-email-docker.sh na primeira vez).");
   let response: Response;
   try {
     response = await fetch(`${base}${path}`, {
