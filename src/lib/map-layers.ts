@@ -63,7 +63,7 @@ export const MAP_LAYERS: MapLayerOption[] = [
 ];
 
 /** Camadas que o aparelho realmente consegue mostrar. */
-export function pickLayers(opts: { token?: string; webgl: boolean }): MapLayerOption[] {
+export function pickLayers(opts: { token?: string | undefined; webgl: boolean }): MapLayerOption[] {
   return MAP_LAYERS.filter((l) => {
     if (l.id === "satelite") return !!opts.token;
     // Sem WebGL só dá para mostrar o mapa simples em imagens.
