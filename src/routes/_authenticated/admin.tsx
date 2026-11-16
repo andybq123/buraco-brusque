@@ -1,3 +1,4 @@
+import logoLupa from "@/assets/logo-lupa.webp";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -102,9 +103,7 @@ function AdminPage() {
       <header className="safe-top sticky top-0 z-20 border-b bg-secondary text-secondary-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <Construction className="h-5 w-5" />
-            </span>
+            <img src={logoLupa} alt="" width={32} height={40} className="h-10 w-auto shrink-0" />
             <div className="min-w-0 leading-tight">
               <div className="truncate font-display text-base">De Olho na Rua</div>
               <div className="text-xs text-secondary-foreground/70">Painel de gestão</div>
@@ -438,7 +437,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
               setSelected(id);
               document.getElementById(`b-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
             }}
-            points={list.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, status: p.status, danger: p.status === "aberto" && p.hazards.length > 0 }))}
+            points={list.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, status: p.status, kind: p.kind, danger: p.status === "aberto" && p.hazards.length > 0 }))}
           />
         </div>
 
@@ -467,8 +466,14 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
                 </div>
               </div>
 
-              {(p.size || p.hazards.length > 0) && (
+              {(p.descriptions?.length ?? 0) > 0 && (
+                <ul className="space-y-1 rounded-lg bg-muted p-3 text-sm">
+                  {p.descriptions?.map((d, i) => <li key={i}>“{d}”</li>)}
+                </ul>
+              )}
+              {(p.kind === "iluminacao" || p.size || p.hazards.length > 0) && (
                 <div className="flex flex-wrap gap-1">
+                  {p.kind === "iluminacao" && <Badge>Iluminação pública</Badge>}
                   {p.size && <Badge variant="outline">{sizeLabel(p.size)}</Badge>}
                   {p.hazards.map((h) => <Badge key={h} variant="destructive">{hazardLabel(h)}</Badge>)}
                 </div>

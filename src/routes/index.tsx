@@ -6,7 +6,8 @@ import { snapToRoad } from "@/lib/snap";
 import { isInsideBrusque } from "@/lib/potholes";
 import { useQuery } from "@tanstack/react-query";
 import { PlacePanel } from "@/components/PlacePanel";
-import { Construction, Copy, Plus, Share2, ShieldCheck } from "lucide-react";
+import { Copy, Plus, Share2, ShieldCheck } from "lucide-react";
+import logoLupa from "@/assets/logo-lupa.webp";
 import { Button } from "@/components/ui/button";
 import { LazyMap } from "@/components/LazyMap";
 import { ReportSheet } from "@/components/ReportSheet";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "De Olho na Rua — mapa dos buracos da cidade" },
-      { name: "description", content: "Veja e informe buracos nas ruas de Brusque, sem cadastro." },
+      { name: "description", content: "Veja e informe buracos e falhas na iluminação pública de Brusque, sem cadastro." },
       { property: "og:title", content: "De Olho na Rua" },
       { property: "og:description", content: "Veja e informe buracos nas ruas de Brusque, sem cadastro." },
       { property: "og:type", content: "website" },
@@ -111,10 +112,11 @@ function Home() {
             lat: p.lat,
             lng: p.lng,
             status: p.status,
+            kind: p.kind,
             danger: p.status === "aberto" && (p.hazards?.length ?? 0) > 0,
             popup: (
               <div className="text-sm">
-                <strong>{p.status === "consertado" ? "Consertado" : "Buraco aberto"} · nº {p.number}</strong>
+                <strong>{p.kind === "iluminacao" ? (p.status === "consertado" ? "Iluminação consertada" : "Iluminação com problema") : (p.status === "consertado" ? "Consertado" : "Buraco aberto")} · nº {p.number}</strong>
                 <br />
                 {p.address && (<>{p.address}<br /></>)}
                 {sizeLabel(p.size) && (<>Tamanho: {sizeLabel(p.size)}<br /></>)}
@@ -135,9 +137,7 @@ function Home() {
 
       <header className="safe-top pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 px-3 pb-3 sm:px-4">
         <div className="pointer-events-auto flex min-w-0 max-w-max items-center gap-2 rounded-2xl bg-secondary/95 py-2 pl-2 pr-3 sm:gap-3 sm:pr-4 text-secondary-foreground shadow-lg backdrop-blur">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full sm:h-10 sm:w-10 bg-primary text-primary-foreground">
-            <Construction className="h-5 w-5" />
-          </span>
+          <img src={logoLupa} alt="" width={40} height={48} className="h-11 w-auto shrink-0 sm:h-12" />
           <div className="min-w-0 leading-tight">
             <h1 className="truncate text-sm sm:text-base">De Olho na Rua</h1>
             <p className="truncate text-[10px] sm:text-xs font-semibold tracking-wider text-primary">BRUSQUE · SC</p>
@@ -145,9 +145,9 @@ function Home() {
         </div>
         <div className="pointer-events-auto flex shrink-0 items-center gap-2">
           <div className="flex h-[52px] items-center gap-2 rounded-2xl bg-secondary/95 px-3 sm:gap-3 sm:px-4 text-secondary-foreground shadow-lg backdrop-blur">
-            <span className="font-display text-2xl leading-none" aria-label={`${abertos} buracos informados`}>{abertos}</span>
+            <span className="font-display text-2xl leading-none" aria-label={`${abertos} problemas informados`}>{abertos}</span>
             <span className="hidden text-[11px] font-semibold uppercase min-[400px]:inline leading-tight tracking-wide text-secondary-foreground/80">
-              Buracos
+              Problemas
               <br />
               informados
             </span>
@@ -197,7 +197,7 @@ function Home() {
           }}
           className="pointer-events-auto h-16 w-full max-w-md touch-manipulation rounded-2xl border-[3px] border-secondary text-lg font-bold shadow-xl"
         >
-          <Plus className="!h-6 !w-6" /> Informar buraco
+          <Plus className="!h-6 !w-6" /> Informar problema
         </Button>
       </div>
       )}

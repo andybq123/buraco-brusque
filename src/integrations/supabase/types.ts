@@ -36,8 +36,10 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          descriptions: string[]
           hazards: string[]
           id: string
+          kind: string
           last_reported_at: string
           lat: number
           lng: number
@@ -55,8 +57,10 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          descriptions?: string[]
           hazards?: string[]
           id?: string
+          kind?: string
           last_reported_at?: string
           lat: number
           lng: number
@@ -74,8 +78,10 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          descriptions?: string[]
           hazards?: string[]
           id?: string
+          kind?: string
           last_reported_at?: string
           lat?: number
           lng?: number
@@ -169,7 +175,9 @@ export type Database = {
       report_pothole: {
         Args: {
           _address?: string
+          _description?: string
           _hazards?: string[]
+          _kind?: string
           _lat: number
           _lng: number
           _photo?: string

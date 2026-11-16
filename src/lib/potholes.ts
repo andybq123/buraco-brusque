@@ -19,7 +19,12 @@ export interface Pothole {
   resolved_by_email?: string | null;
   ouvidoria_protocol?: string | null;
   ouvidoria_sent_at?: string | null;
+  kind?: ReportKind;
+  descriptions?: string[];
 }
+
+export type ReportKind = "buraco" | "iluminacao";
+export const KIND_LABEL: Record<ReportKind, string> = { buraco: "Buraco", iluminacao: "Iluminação pública" };
 
 export const BRUSQUE_CENTER: [number, number] = [-27.0977, -48.9175];
 

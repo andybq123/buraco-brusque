@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, MapPin, X } from "lucide-react";
+import { Camera, Construction, Lamp, Loader2, MapPin, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { distanceMeters, GROUP_RADIUS_M, HAZARDS, isInsideBrusque, SIZES, type PotholeSize } from "@/lib/potholes";
+import { distanceMeters, GROUP_RADIUS_M, HAZARDS, isInsideBrusque, SIZES, type PotholeSize, type ReportKind } from "@/lib/potholes";
 import { cn } from "@/lib/utils";
 import { isAcceptedImage, preparePhoto } from "@/lib/photo";
 import { createPhotoUploadUrl } from "@/lib/photo-upload.functions";
@@ -14,7 +15,7 @@ function uuid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-const LAST_KEY = "bb_last_report";
+const LAST_KEY = "bb_last_report_v2";
 const COOLDOWN_MS = 10 * 60 * 1000;
 
 export function ReportSheet({
@@ -36,6 +37,8 @@ export function ReportSheet({
   const [sending, setSending] = useState(false);
   const [size, setSize] = useState<PotholeSize | null>(null);
   const [hazards, setHazards] = useState<string[]>([]);
+  const [kind, setKind] = useState<ReportKind>("buraco");
+  const [desc, setDesc] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,6 +47,8 @@ export function ReportSheet({
       setPreview(null);
       setSize(null);
       setHazards([]);
+      setKind("buraco");
+      setDesc("");
     }
   }, [open]);
 
@@ -60,14 +65,15 @@ export function ReportSheet({
     if (!geo) return;
     try {
       const last = JSON.parse(localStorage.getItem(LAST_KEY) ?? "null") as
-        | { lat: number; lng: number; t: number }
+        | { lat: number; lng: number; t: number; k?: string }
         | null;
       if (
         last &&
         Date.now() - last.t < COOLDOWN_MS &&
+        last.k === kind &&
         distanceMeters(last.lat, last.lng, geo.lat, geo.lng) <= GROUP_RADIUS_M
       ) {
-        toast.info("Você já informou este buraco há pouco. Obrigado!");
+        toast.info("Você já informou este local há pouco. Obrigado!");
         onOpenChange(false);
         return;
       }
@@ -90,16 +96,16 @@ export function ReportSheet({
             photoName = null;
           }
         }
-        if (!photoName) toast.warning("Não deu para enviar a foto, mas o buraco será registrado.");
+        if (!photoName) toast.warning("Não deu para enviar a foto, mas o aviso será registrado.");
       }
       const { data, error } = await supabase.rpc(
         "report_pothole",
-        { _lat: geo.lat, _lng: geo.lng, ...(photoName ? { _photo: photoName } : {}), ...(address ? { _address: address } : {}), ...(size ? { _size: size } : {}), ...(hazards.length ? { _hazards: hazards } : {}) },
+        { _lat: geo.lat, _lng: geo.lng, ...(photoName ? { _photo: photoName } : {}), ...(address ? { _address: address } : {}), _kind: kind, ...(desc.trim() ? { _description: desc.trim() } : {}), ...(kind === "buraco" && size ? { _size: size } : {}), ...(kind === "buraco" && hazards.length ? { _hazards: hazards } : {}) },
       );
       if (error) throw error;
-      try { localStorage.setItem(LAST_KEY, JSON.stringify({ lat: geo.lat, lng: geo.lng, t: Date.now() })); } catch { /* modo privado */ }
+      try { localStorage.setItem(LAST_KEY, JSON.stringify({ lat: geo.lat, lng: geo.lng, t: Date.now(), k: kind })); } catch { /* modo privado */ }
       const grouped = (data as { grouped?: boolean } | null)?.grouped;
-      window.__lovableEvents?.track?.("project.pothole_reported", {
+      if (kind === "buraco") window.__lovableEvents?.track?.("project.pothole_reported", {
         grouped: !!grouped,
         has_photo: !!photoName,
         size: size ?? "nao_informado",
@@ -111,8 +117,8 @@ export function ReportSheet({
       });
       toast.success(
         grouped
-          ? "Esse buraco já estava no mapa — somamos o seu aviso. Obrigado!"
-          : "Buraco informado! Obrigado por ajudar Brusque.",
+          ? "Esse problema já estava no mapa — somamos o seu aviso. Obrigado!"
+          : kind === "iluminacao" ? "Iluminação informada! Obrigado por ajudar Brusque." : "Buraco informado! Obrigado por ajudar Brusque.",
       );
       onDone([geo.lat, geo.lng]);
       onOpenChange(false);
@@ -132,7 +138,7 @@ export function ReportSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="safe-bottom-sheet max-h-[90dvh] overflow-y-auto rounded-t-3xl">
         <SheetHeader className="text-left">
-          <SheetTitle className="font-display text-2xl">Informar buraco</SheetTitle>
+          <SheetTitle className="font-display text-2xl">Informar problema</SheetTitle>
           <SheetDescription>Confira o local. Os detalhes e a foto são opcionais.</SheetDescription>
         </SheetHeader>
 
@@ -145,6 +151,25 @@ export function ReportSheet({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-2">
+            {([["buraco", "Buraco na rua", Construction], ["iluminacao", "Iluminação pública", Lamp]] as const).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={kind === id}
+                onClick={() => setKind(id)}
+                className={cn(
+                  "flex h-20 touch-manipulation flex-col items-center justify-center gap-1 rounded-2xl border-2 text-sm font-bold",
+                  kind === id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background",
+                )}
+              >
+                <Icon className="h-6 w-6" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {kind === "buraco" && (<>
           <div>
             <div className="mb-2 text-sm font-semibold">Tamanho</div>
             <div className="grid grid-cols-3 gap-2">
@@ -188,6 +213,18 @@ export function ReportSheet({
               })}
             </div>
           </div>
+          </>)}
+
+          <div>
+            <div className="mb-2 text-sm font-semibold">Relato (opcional)</div>
+            <Textarea
+              value={desc}
+              maxLength={500}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder={kind === "iluminacao" ? "Ex.: poste apagado há uma semana, lâmpada piscando…" : "Ex.: buraco na faixa da direita, perto do ponto de ônibus…"}
+              className="min-h-20 text-base"
+            />
+          </div>
 
           <input
             ref={fileRef}
@@ -210,7 +247,7 @@ export function ReportSheet({
               <span>Foto anexada</span>
               <img
                 src={preview}
-                alt="Foto do buraco"
+                alt="Foto do local"
                 className="absolute inset-0 h-full w-full object-cover"
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />

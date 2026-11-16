@@ -185,3 +185,6 @@ input, select, textarea { font-size: 16px !important; }
   to { transform: translateY(-18px) rotate(10deg) scale(1.08, 0.92); }
 }
 @media (prefers-reduced-motion: reduce) { .buddy img { animation: none !important; } }
+
+.pothole-pin--luz { background: var(--secondary); color: var(--primary); border-color: var(--primary); }
+.pothole-pin--luz svg { width: 22px; height: 22px; }

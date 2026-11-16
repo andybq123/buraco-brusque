@@ -87,6 +87,7 @@ export interface MapPoint {
   lng: number;
   status: string;
   danger?: boolean;
+  kind?: string | undefined;
   popup?: ReactNode;
 }
 
@@ -99,13 +100,16 @@ function FlyTo({ target }: { target?: [number, number] | null }) {
 }
 
 const iconCache = new Map<string, L.DivIcon>();
-function potholeIcon(status: string, danger = false) {
-  const key = `${status}-${danger}`;
+const LAMP_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 22h6M12 22V8"/><path d="M12 8c0-3 2-5 5-5h1"/><path d="M15.5 3h5l-1 3h-3z" fill="currentColor"/></svg>`;
+function potholeIcon(status: string, danger = false, kind = "buraco") {
+  const key = `${status}-${danger}-${kind}`;
   let ic = iconCache.get(key);
   if (!ic) {
     ic = L.divIcon({
       className: "",
-      html: status === "consertado"
+      html: kind === "iluminacao" && status !== "consertado"
+        ? `<div class="pothole-pin pothole-pin--luz pothole-pin--${status}">${LAMP_SVG}</div>`
+        : status === "consertado"
         ? `<div class="pothole-pin pothole-pin--consertado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>`
         : `<div class="pothole-pin pothole-pin--${status}${danger ? " pothole-pin--perigo" : ""}"><img src="/favicon.png" alt="" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}</div>`,
       iconSize: [36, 36],
@@ -199,7 +203,7 @@ export default function PotholeMap({
           key={p.id}
           ref={(m) => { if (m && openId === p.id && opened.current !== p.id) { opened.current = p.id; setTimeout(() => m.openPopup(), 900); } }}
           position={[p.lat, p.lng]}
-          icon={potholeIcon(p.status, p.danger)}
+          icon={potholeIcon(p.status, p.danger, p.kind)}
           opacity={placing ? 0.6 : 1}
           eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
         >

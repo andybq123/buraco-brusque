@@ -92,6 +92,13 @@
       "when": 1794597648263,
       "tag": "0012_ouvidoria_protocol",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794839255751,
+      "tag": "0013_lighting_reports",
+      "breakpoints": true
     }
   ]
 }

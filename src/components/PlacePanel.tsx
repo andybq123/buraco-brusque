@@ -149,7 +149,7 @@ export function PlacePanel({
     <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 safe-bottom">
       <div className="w-full max-w-md space-y-3 rounded-3xl bg-card p-4 text-card-foreground shadow-xl">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold">Arraste o bonequinho até o buraco — ele se prende na rua.</p>
+          <p className="text-sm font-semibold">Arraste o bonequinho até o local — ele se prende na rua.</p>
           <button aria-label="Cancelar" onClick={onCancel} className="-m-1 rounded-full p-1">
             <X className="h-5 w-5" />
           </button>
