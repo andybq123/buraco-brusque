@@ -11,6 +11,8 @@ export interface OuvidoriaInput {
   hazards: string[];
   report_count: number;
   created_at: string;
+  kind?: "buraco" | "iluminacao";
+  descriptions?: string[];
 }
 
 export interface OuvidoriaData {
@@ -24,8 +26,9 @@ export interface OuvidoriaData {
 
 /** Monta os campos do formulário da Ouvidoria a partir do buraco. */
 export function buildOuvidoriaReport(p: OuvidoriaInput, origin = ""): OuvidoriaData {
-  const parts = ["Munícipe solicita reparo em buraco na via."];
-  const size = sizeLabel(p.size);
+  const lighting = p.kind === "iluminacao";
+  const parts = [lighting ? "Munícipe solicita reparo na iluminação pública." : "Munícipe solicita reparo em buraco na via."];
+  const size = lighting ? null : sizeLabel(p.size);
   if (size) parts.push(`Tamanho: ${size.toLowerCase()}.`);
   if (p.hazards.length) parts.push(`Riscos: ${p.hazards.map((h) => hazardLabel(h).toLowerCase()).join(", ")}.`);
   const since = new Date(p.created_at).toLocaleDateString("pt-BR");
@@ -35,7 +38,7 @@ export function buildOuvidoriaReport(p: OuvidoriaInput, origin = ""): OuvidoriaD
   parts.push(`Coordenadas: ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}.`);
   if (origin) parts.push(`Localização no mapa: ${origin}/?b=${p.number}`);
   return {
-    assunto: "Buraco",
+    assunto: lighting ? "Iluminação pública" : "Buraco",
     finalidade: "Solicitação",
     prioridade: p.hazards.length > 0 ? "Alta" : "Baixa",
     endereco: p.address ?? `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`,

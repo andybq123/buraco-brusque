@@ -201,6 +201,14 @@ input, select, textarea { font-size: 16px !important; }
 }
 .report-pin--removido { opacity: 0.55; }
 .report-pin .pothole-pin-alert { top: -5px; right: -5px; }
+.pothole-pin { position: relative; }
+.pothole-pin-protocol {
+  position: absolute; top: -6px; left: -6px; z-index: 2; width: 18px; height: 18px;
+  display: grid; place-items: center; border-radius: 9999px; border: 2px solid var(--card);
+  background: var(--primary); color: var(--primary-foreground); box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+}
+.pothole-pin-protocol svg { width: 11px; height: 11px; }
+.pothole-pin--consertado .pothole-pin-protocol { top: -7px; left: -7px; }
 
 /* Seletor de camada do mapa */
 .leaflet-container { position: relative; }

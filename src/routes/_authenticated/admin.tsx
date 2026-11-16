@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle, Check, CheckCircle2, Construction, ExternalLink, LogOut, MapPin, RotateCcw,
   Search, ShieldCheck, Trash2, UserPlus, Users, Wrench, X,
-  LayoutDashboard, BarChart3, Landmark, Download, Clock, TrendingUp, ArrowRight,
+  LayoutDashboard, BarChart3, Landmark, Download, Clock, TrendingUp, ArrowRight, Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VisitsPanel } from "@/components/VisitsPanel";
+import { OuvidoriaSettings } from "@/components/OuvidoriaSettings";
 import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -94,7 +95,10 @@ function AdminPage() {
     { id: "geral" as const, label: "Visão geral", short: "Geral", hint: "Resumo do andamento dos reparos na cidade.", icon: <LayoutDashboard className="h-5 w-5" /> },
     { id: "buracos" as const, label: "Buracos", short: "Buracos", hint: "Acompanhe, conclua ou remova os avisos dos moradores.", icon: <MapPin className="h-5 w-5" /> },
     { id: "acessos" as const, label: "Acessos", short: "Acessos", hint: "Visitas ao site, de onde vêm e quem está online.", icon: <BarChart3 className="h-5 w-5" /> },
-    ...(isAdmin ? [{ id: "usuarios" as const, label: "Usuários", short: "Usuários", hint: "Quem pode entrar no painel e o que pode fazer.", icon: <Users className="h-5 w-5" /> }] : []),
+    ...(isAdmin ? [
+      { id: "ouvidoria" as const, label: "Ouvidoria e e-mail", short: "E-mail", hint: "Envio automático, caixa de respostas e identificação de protocolos.", icon: <Mail className="h-5 w-5" /> },
+      { id: "usuarios" as const, label: "Usuários", short: "Usuários", hint: "Quem pode entrar no painel e o que pode fazer.", icon: <Users className="h-5 w-5" /> },
+    ] : []),
   ];
   const current = sections.find((x) => x.id === section) ?? sections[0]!;
 
@@ -148,6 +152,7 @@ function AdminPage() {
           {section === "geral" && <Overview onGo={setSection} />}
           {section === "buracos" && <Potholes isAdmin={isAdmin} email={user.email ?? ""} />}
           {section === "acessos" && <VisitsPanel />}
+          {section === "ouvidoria" && isAdmin && <OuvidoriaSettings />}
           {section === "usuarios" && isAdmin && <StaffUsers />}
         </main>
       </div>
@@ -163,7 +168,7 @@ function AdminPage() {
   );
 }
 
-type Section = "geral" | "buracos" | "acessos" | "usuarios";
+type Section = "geral" | "buracos" | "acessos" | "ouvidoria" | "usuarios";
 
 const adminPotholesQuery = {
   queryKey: ["potholes", "admin"],
@@ -352,7 +357,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
     if (!ouvFor) return;
     setBusy(true);
     const v = protocol.trim().slice(0, 60);
-    const ok = await update(ouvFor.id, { ouvidoria_protocol: v || null, ouvidoria_sent_at: v ? new Date().toISOString() : null }, v ? "Protocolo salvo." : "Protocolo removido.");
+    const ok = await update(ouvFor.id, { ouvidoria_protocol: v || null, ouvidoria_sent_at: v ? new Date().toISOString() : null, ouvidoria_protocol_source: v ? "manual" : null }, v ? "Protocolo salvo." : "Protocolo removido.");
     setBusy(false);
     if (ok) setOuvFor(null);
   };
@@ -437,7 +442,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
               setSelected(id);
               document.getElementById(`b-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
             }}
-            points={list.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, status: p.status, kind: p.kind, danger: p.status === "aberto" && p.hazards.length > 0 }))}
+            points={list.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, status: p.status, kind: p.kind, danger: p.status === "aberto" && p.hazards.length > 0, protocol: !!p.ouvidoria_protocol }))}
           />
         </div>
 
@@ -462,7 +467,8 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <Badge variant={p.status === "aberto" ? "default" : "secondary"}>{STATUS_LABEL[p.status]}</Badge>
-                  {p.ouvidoria_protocol && <Badge variant="outline">Protocolo {p.ouvidoria_protocol}</Badge>}
+                  {p.ouvidoria_protocol && <Badge variant="outline"><Landmark className="mr-1 h-3 w-3" />Protocolo {p.ouvidoria_protocol}{p.ouvidoria_protocol_source === "email" ? " · automático" : ""}</Badge>}
+                  {!p.ouvidoria_protocol && p.ouvidoria_email_sent_at && <Badge variant="secondary"><Mail className="mr-1 h-3 w-3" />E-mail enviado</Badge>}
                 </div>
               </div>
 
@@ -528,7 +534,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
                 )}
                 {p.status !== "removido" && (
                   <Button size="sm" variant="outline" className="w-full" onClick={() => { setProtocol(p.ouvidoria_protocol ?? ""); setOuvFor(p); }}>
-                    <Landmark className="mr-1 h-4 w-4" /> {p.ouvidoria_protocol ? "Ouvidoria · editar protocolo" : "Enviar à Ouvidoria"}
+                    <Landmark className="mr-1 h-4 w-4" /> {p.ouvidoria_protocol ? "Ouvidoria · editar protocolo" : p.ouvidoria_email_sent_at ? "Ouvidoria · aguardando protocolo" : "Enviar à Ouvidoria"}
                   </Button>
                 )}
                 {p.status !== "aberto" && (

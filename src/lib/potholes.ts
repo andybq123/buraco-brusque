@@ -19,6 +19,8 @@ export interface Pothole {
   resolved_by_email?: string | null;
   ouvidoria_protocol?: string | null;
   ouvidoria_sent_at?: string | null;
+  ouvidoria_email_sent_at?: string | null;
+  ouvidoria_protocol_source?: "email" | "manual" | null;
   kind?: ReportKind;
   descriptions?: string[];
 }

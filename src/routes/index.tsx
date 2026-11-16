@@ -91,6 +91,7 @@ function Home() {
             status: p.status,
             kind: p.kind,
             danger: p.status === "aberto" && (p.hazards?.length ?? 0) > 0,
+            protocol: !!p.ouvidoria_protocol,
             popup: (
               <div className="text-sm">
                 <strong>{p.kind === "iluminacao" ? (p.status === "consertado" ? "Iluminação consertada" : "Iluminação com problema") : (p.status === "consertado" ? "Consertado" : "Buraco aberto")} · nº {p.number}</strong>

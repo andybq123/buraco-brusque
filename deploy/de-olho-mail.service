@@ -1,0 +1,23 @@
+# /etc/systemd/system/de-olho-mail.service
+# Ponte local de SMTP/IMAP. Nao fica exposta na internet; somente o app acessa.
+
+[Unit]
+Description=De Olho na Rua - ponte de e-mail
+After=network.target
+
+[Service]
+Type=simple
+User=deolho
+WorkingDirectory=/opt/de-olho-na-rua/deploy/mail-bridge
+EnvironmentFile=/etc/de-olho/env
+Environment=NODE_ENV=production
+Environment=MAIL_BRIDGE_HOST=127.0.0.1
+Environment=MAIL_BRIDGE_PORT=3001
+ExecStart=/usr/bin/node /opt/de-olho-na-rua/deploy/mail-bridge/server.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

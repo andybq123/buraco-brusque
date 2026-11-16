@@ -99,6 +99,13 @@
       "when": 1794839255751,
       "tag": "0013_lighting_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794858292752,
+      "tag": "0014_ouvidoria_email_automation",
+      "breakpoints": true
     }
   ]
 }

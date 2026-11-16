@@ -94,6 +94,7 @@ export interface MapPoint {
   status: string;
   danger?: boolean;
   kind?: string | undefined;
+  protocol?: boolean;
   popup?: ReactNode;
 }
 
@@ -106,15 +107,16 @@ function FlyTo({ target }: { target?: [number, number] | null }) {
 }
 
 const iconCache = new Map<string, L.DivIcon>();
-function potholeIcon(status: string, danger = false, kind = "buraco") {
-  const key = `${status}-${danger}-${kind}`;
+function potholeIcon(status: string, danger = false, kind = "buraco", protocol = false) {
+  const key = `${status}-${danger}-${kind}-${protocol}`;
   let ic = iconCache.get(key);
   if (!ic) {
+    const protocolBadge = protocol ? '<span class="pothole-pin-protocol" title="Protocolado na Ouvidoria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10m14 11V10M3 10h18L12 3 3 10zM9 10v11m6-11v11"/></svg></span>' : "";
     ic = L.divIcon({
       className: "",
       html: status === "consertado"
-        ? `<div class="pothole-pin pothole-pin--consertado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>`
-        : `<div class="report-pin${kind === "iluminacao" ? " report-pin--luz" : ""}${status === "removido" ? " report-pin--removido" : ""}"><img src="${kind === "iluminacao" ? pinoPoste : pinoBuraco}" alt="${kind === "iluminacao" ? "Iluminação com problema" : "Buraco na rua"}" draggable="false" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}</div>`,
+        ? `<div class="pothole-pin pothole-pin--consertado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${protocolBadge}</div>`
+        : `<div class="report-pin${kind === "iluminacao" ? " report-pin--luz" : ""}${status === "removido" ? " report-pin--removido" : ""}"><img src="${kind === "iluminacao" ? pinoPoste : pinoBuraco}" alt="${kind === "iluminacao" ? "Iluminação com problema" : "Buraco na rua"}" draggable="false" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}${protocolBadge}</div>`,
       iconSize: status === "consertado" ? [36, 36] : [40, 54],
       iconAnchor: status === "consertado" ? [18, 18] : [20, 54],
       popupAnchor: status === "consertado" ? [0, -16] : [0, -50],
@@ -285,7 +287,7 @@ export default function PotholeMap({
           key={p.id}
           ref={(m) => { if (m && openId === p.id && opened.current !== p.id) { opened.current = p.id; setTimeout(() => m.openPopup(), 900); } }}
           position={[p.lat, p.lng]}
-          icon={potholeIcon(p.status, p.danger, p.kind)}
+          icon={potholeIcon(p.status, p.danger, p.kind, p.protocol)}
           opacity={placing ? 0.6 : 1}
           eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
         >

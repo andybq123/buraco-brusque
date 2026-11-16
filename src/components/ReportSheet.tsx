@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Construction, Lamp, Loader2, MapPin, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { distanceMeters, GROUP_RADIUS_M, HAZARDS, isInsideBrusque, SIZES, type P
 import { cn } from "@/lib/utils";
 import { isAcceptedImage, preparePhoto } from "@/lib/photo";
 import { createPhotoUploadUrl } from "@/lib/photo-upload.functions";
+import { submitPublicReport } from "@/lib/public-reports.functions";
 
 function uuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -39,6 +41,7 @@ export function ReportSheet({
   const [hazards, setHazards] = useState<string[]>([]);
   const [kind, setKind] = useState<ReportKind>("buraco");
   const [desc, setDesc] = useState("");
+  const [reportAddress, setReportAddress] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,8 +52,9 @@ export function ReportSheet({
       setHazards([]);
       setKind("buraco");
       setDesc("");
+      setReportAddress(address ?? "");
     }
-  }, [open]);
+  }, [open, address]);
 
   useEffect(() => {
     if (!photo) return;
@@ -98,13 +102,18 @@ export function ReportSheet({
         }
         if (!photoName) toast.warning("Não deu para enviar a foto, mas o aviso será registrado.");
       }
-      const { data, error } = await supabase.rpc(
-        "report_pothole",
-        { _lat: geo.lat, _lng: geo.lng, ...(photoName ? { _photo: photoName } : {}), ...(address ? { _address: address } : {}), _kind: kind, ...(desc.trim() ? { _description: desc.trim() } : {}), ...(kind === "buraco" && size ? { _size: size } : {}), ...(kind === "buraco" && hazards.length ? { _hazards: hazards } : {}) },
-      );
-      if (error) throw error;
+      const data = await submitPublicReport({ data: {
+        lat: geo.lat,
+        lng: geo.lng,
+        photo: photoName,
+        address: reportAddress.trim() || null,
+        kind,
+        description: desc.trim() || null,
+        size: kind === "buraco" ? size : null,
+        hazards: kind === "buraco" ? hazards : [],
+      } });
       try { localStorage.setItem(LAST_KEY, JSON.stringify({ lat: geo.lat, lng: geo.lng, t: Date.now(), k: kind })); } catch { /* modo privado */ }
-      const grouped = (data as { grouped?: boolean } | null)?.grouped;
+      const grouped = data.grouped;
       if (kind === "buraco") window.__lovableEvents?.track?.("project.pothole_reported", {
         grouped: !!grouped,
         has_photo: !!photoName,
@@ -149,6 +158,19 @@ export function ReportSheet({
               <div className="font-semibold">{address ?? "Ponto marcado no mapa"}</div>
               {outside && <div className="text-destructive">Esse ponto fica fora de Brusque.</div>}
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="report-address" className="mb-2 block text-sm font-semibold">Endereço para a Ouvidoria</label>
+            <Input
+              id="report-address"
+              value={reportAddress}
+              maxLength={200}
+              onChange={(e) => setReportAddress(e.target.value)}
+              placeholder="Ex.: Rua Horácio Anacleto da Silva, 720"
+              className="text-base"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Confira o endereço e inclua o número, se souber. As coordenadas exatas também serão enviadas.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
