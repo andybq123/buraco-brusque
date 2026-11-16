@@ -9,24 +9,31 @@ import { setWorkerUrl } from "maplibre-gl";
 import L from "leaflet";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
+import { Check, Layers } from "lucide-react";
+import {
+  hasWebGL,
+  listMapLayers,
+  mapboxToken,
+  openFreeMapStyle,
+  readMapLayer,
+  writeMapLayer,
+  type MapLayerId,
+} from "@/lib/map-layers";
 
 setWorkerUrl(workerUrl);
 
-/** Mapa base vetorial gratuito (OpenFreeMap, estilo "liberty"). */
-function hasWebGL() {
-  try {
-    const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
-  } catch {
-    return false;
-  }
-}
+const MAPBOX_ATTR =
+  '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const OFM_ATTR =
+  '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
-function BaseLayer() {
+/** Mapa base: satélite do Mapbox quando há chave; senão estilos gratuitos (OpenFreeMap / OSM). */
+function BaseLayer({ layer }: { layer: MapLayerId }) {
   const map = useMap();
   useEffect(() => {
-    const mbToken = import.meta.env["VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN"] as string | undefined;
-    if (mbToken) {
+    const mbToken = mapboxToken();
+    if (layer === "satelite" && mbToken) {
       // Mapbox satélite com nomes de ruas
       const tiles = L.tileLayer(
         `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`,
@@ -34,8 +41,7 @@ function BaseLayer() {
           tileSize: 512,
           zoomOffset: -1,
           maxZoom: 20,
-          attribution:
-            '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          attribution: MAPBOX_ATTR,
         },
       ).addTo(map);
       return () => {
@@ -46,27 +52,25 @@ function BaseLayer() {
       // Aparelhos antigos sem WebGL: mapa em imagens comuns
       const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution: OSM_ATTR,
       }).addTo(map);
       return () => {
         map.removeLayer(tiles);
       };
     }
-    const layer = maplibreGL({
-      style: "https://tiles.openfreemap.org/styles/liberty",
+    const gl = maplibreGL({
+      style: `https://tiles.openfreemap.org/styles/${openFreeMapStyle(layer)}`,
       attributionControl: false,
     } as never);
-    layer.addTo(map);
-    map.attributionControl?.addAttribution(
-      '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    );
+    gl.addTo(map);
+    map.attributionControl?.addAttribution(OFM_ATTR);
     return () => {
-      map.removeLayer(layer);
+      map.removeLayer(gl);
     };
-  }, [map]);
+  }, [map, layer]);
   return null;
 }
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BRUSQUE_BOUNDS, BRUSQUE_CENTER, isInsideBrusque } from "@/lib/potholes";
 
 const WORLD: [number, number][] = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
@@ -178,6 +182,80 @@ function Placer({ pos, onMove }: { pos: [number, number]; onMove: (p: [number, n
   );
 }
 
+/** Botão flutuante que troca a camada do mapa (satélite, ruas, claro, escuro). */
+function LayerSwitcher({ layer, onChange }: { layer: MapLayerId; onChange: (id: MapLayerId) => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const options = useMemo(listMapLayers, []);
+  const current = options.find((o) => o.id === layer) ?? options[0];
+
+  // Deixa o mapa ignorar toques e rolamentos que começarem no seletor.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={box} className="map-switcher">
+      {open && (
+        <div className="map-switcher__panel" role="menu" aria-label="Camada do mapa">
+          <p className="px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-secondary-foreground/60">
+            Camada do mapa
+          </p>
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={o.id === layer}
+              onClick={() => {
+                onChange(o.id);
+                setOpen(false);
+              }}
+              className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left transition ${
+                o.id === layer ? "bg-primary/20" : "hover:bg-white/10"
+              }`}
+            >
+              <span className="h-7 w-7 shrink-0 rounded-lg border border-white/25" style={{ background: o.swatch }} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold leading-tight">{o.name}</span>
+                <span className="block text-[11px] leading-tight text-secondary-foreground/65">{o.hint}</span>
+              </span>
+              {o.id === layer && <Check className="h-4 w-4 shrink-0 text-primary" />}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Escolher camada do mapa"
+        aria-expanded={open}
+        className="map-switcher__btn"
+      >
+        <Layers className="h-4 w-4" />
+        <span>{current?.label ?? "Mapa"}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function PotholeMap({
   points,
   focus,
@@ -192,9 +270,14 @@ export default function PotholeMap({
   placing?: { pos: [number, number]; onMove: (p: [number, number]) => void } | null;
 }) {
   const opened = useRef<string | null>(null);
+  const [layer, setLayer] = useState<MapLayerId>(() => {
+    const stored = readMapLayer();
+    const ok = listMapLayers();
+    return ok.some((o) => o.id === stored) ? stored : (ok[0]?.id ?? "ruas");
+  });
   return (
     <MapContainer center={BRUSQUE_CENTER} zoom={14} className="h-full w-full" scrollWheelZoom zoomControl={false} tapTolerance={20} maxZoom={19} minZoom={12} maxBounds={MAX_BOUNDS} maxBoundsViscosity={1}>
-      <BaseLayer />
+      <BaseLayer layer={layer} />
       <CityMask />
       <FlyTo target={focus ?? null} />
       {points.map((p) => (
@@ -210,6 +293,13 @@ export default function PotholeMap({
         </Marker>
       ))}
       {placing && <Placer pos={placing.pos} onMove={placing.onMove} />}
+      <LayerSwitcher
+        layer={layer}
+        onChange={(id) => {
+          setLayer(id);
+          writeMapLayer(id);
+        }}
+      />
     </MapContainer>
   );
 }

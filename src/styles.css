@@ -201,3 +201,25 @@ input, select, textarea { font-size: 16px !important; }
 }
 .report-pin--removido { opacity: 0.55; }
 .report-pin .pothole-pin-alert { top: -5px; right: -5px; }
+
+/* Seletor de camada do mapa */
+.leaflet-container { position: relative; }
+.map-switcher {
+  position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 7rem);
+  z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  touch-action: manipulation;
+}
+.map-switcher__btn {
+  display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px;
+  border-radius: 9999px; border: 1px solid rgb(255 255 255 / 0.14);
+  background: color-mix(in oklab, var(--secondary) 94%, transparent);
+  color: var(--secondary-foreground); font-size: 12px; font-weight: 700;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35); backdrop-filter: blur(6px);
+}
+.map-switcher__panel {
+  width: 218px; display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  border-radius: 16px; border: 1px solid rgb(255 255 255 / 0.14);
+  background: color-mix(in oklab, var(--secondary) 94%, transparent);
+  color: var(--secondary-foreground); box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(8px);
+}
