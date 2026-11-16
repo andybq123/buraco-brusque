@@ -149,6 +149,7 @@ export type Database = {
           smtp_host: string | null
           smtp_port: number | null
           smtp_secure: boolean
+          sync_interval_minutes: number
           updated_at: string
           updated_by: string | null
         }
@@ -171,6 +172,7 @@ export type Database = {
           smtp_host?: string | null
           smtp_port?: number | null
           smtp_secure?: boolean
+          sync_interval_minutes?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -193,6 +195,7 @@ export type Database = {
           smtp_host?: string | null
           smtp_port?: number | null
           smtp_secure?: boolean
+          sync_interval_minutes?: number
           updated_at?: string
           updated_by?: string | null
         }

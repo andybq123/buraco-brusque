@@ -1,0 +1,1 @@
+ALTER TABLE public.ouvidoria_settings ADD COLUMN IF NOT EXISTS sync_interval_minutes integer NOT NULL DEFAULT 15 CHECK (sync_interval_minutes >= 5 AND sync_interval_minutes <= 1440);

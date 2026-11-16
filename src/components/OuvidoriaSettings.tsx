@@ -37,7 +37,7 @@ export function OuvidoriaSettings() {
   const [form, setForm] = useState({
     recipientEmail: "", senderEmail: "", senderName: "De Olho na Rua", password: "",
     autoDiscover: true, smtpHost: "", smtpPort: 465, smtpSecure: true, imapHost: "", imapPort: 993, imapSecure: true,
-    autoSend: true, autoRead: true, aiProvider: "gemini" as "gemini" | "groq", aiKey: "", aiModel: "",
+    autoSend: true, autoRead: true, syncInterval: 15, aiProvider: "gemini" as "gemini" | "groq", aiKey: "", aiModel: "",
   });
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((old) => ({ ...old, [key]: value }));
 
@@ -49,7 +49,7 @@ export function OuvidoriaSettings() {
       recipientEmail: s.recipientEmail, senderEmail: s.senderEmail, senderName: s.senderName,
       smtpHost: s.smtpHost, smtpPort: s.smtpPort, smtpSecure: s.smtpSecure,
       imapHost: s.imapHost, imapPort: s.imapPort, imapSecure: s.imapSecure,
-      autoSend: s.autoSend, autoRead: s.autoRead, aiProvider: s.aiProvider as "gemini" | "groq", aiModel: s.aiModel,
+      autoSend: s.autoSend, autoRead: s.autoRead, syncInterval: s.syncInterval, aiProvider: s.aiProvider as "gemini" | "groq", aiModel: s.aiModel,
       password: "", aiKey: "",
     }));
   }, [panel.data?.settings]);
@@ -106,8 +106,11 @@ export function OuvidoriaSettings() {
         )}
         <div className="grid gap-3 md:grid-cols-2">
           <label className="flex items-center justify-between rounded-lg border p-3 text-sm"><span><span className="block font-semibold">Enviar novos registros</span><span className="text-muted-foreground">Falhas não impedem o aviso do morador.</span></span><Switch checked={form.autoSend} onCheckedChange={(v) => set("autoSend", v)} /></label>
-          <label className="flex items-center justify-between rounded-lg border p-3 text-sm"><span><span className="block font-semibold">Ler respostas automaticamente</span><span className="text-muted-foreground">A caixa é verificada a cada 15 minutos.</span></span><Switch checked={form.autoRead} onCheckedChange={(v) => set("autoRead", v)} /></label>
+          <label className="flex items-center justify-between rounded-lg border p-3 text-sm"><span><span className="block font-semibold">Ler respostas automaticamente</span><span className="text-muted-foreground">{form.autoRead ? `A caixa é verificada a cada ${form.syncInterval} minutos.` : "Desligado: verifique pelo botão “Verificar respostas”."}</span></span><Switch checked={form.autoRead} onCheckedChange={(v) => set("autoRead", v)} /></label>
         </div>
+        {form.autoRead && (
+          <div className="space-y-1 md:max-w-xs"><Label htmlFor="ouv-interval">Verificar respostas a cada (minutos)</Label><Input id="ouv-interval" type="number" min={5} max={1440} step={5} required value={form.syncInterval} onChange={(e) => set("syncInterval", Number(e.target.value))} /><p className="text-xs text-muted-foreground">Entre 5 e 1440 minutos (24 h).</p></div>
+        )}
 
         <div className="space-y-3 border-t pt-4">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-secondary text-secondary-foreground"><Bot className="h-5 w-5" /></span><div><h2 className="text-lg">Leitura do protocolo com IA</h2><p className="text-sm text-muted-foreground">Usada quando a resposta não tem código e protocolo explícitos. Nenhum protocolo é inventado ou aplicado com baixa confiança.</p></div></div>
@@ -125,7 +128,7 @@ export function OuvidoriaSettings() {
 
       <section className="rounded-xl border bg-card">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
-          <div><h2 className="text-lg">Envios e respostas</h2><p className="text-sm text-muted-foreground">O envio acontece no registro; novas tentativas e respostas são verificadas a cada 15 minutos.</p></div>
+          <div><h2 className="text-lg">Envios e respostas</h2><p className="text-sm text-muted-foreground">O envio acontece no registro; novas tentativas acontecem a cada 5 minutos e as respostas no intervalo definido acima.</p></div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("send", async () => { const r = await sendPending({}); if (!r.sent && r.errors?.length) throw new Error(r.errors[0]); }, "Envio dos registros pendentes concluído.")}><Send className="mr-1 h-4 w-4" />Enviar pendentes</Button>
             <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("sync", async () => { const r = await syncReplies({}); toast.info(`${r.applied ?? 0} protocolo(s) anexado(s).`); }, "Caixa de respostas verificada.")}><RefreshCw className={`mr-1 h-4 w-4 ${busy === "sync" ? "animate-spin" : ""}`} />Verificar respostas</Button>

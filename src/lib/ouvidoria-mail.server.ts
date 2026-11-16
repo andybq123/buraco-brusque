@@ -214,6 +214,10 @@ export async function syncReplies(options: { force?: boolean } = {}) {
   const settings = await loadSettings();
   if (!settings?.recipient_email || !settings.sender_email || !settings.password_ciphertext) return { skipped: "configure_email", applied: 0 };
   if (!settings.auto_read && !options.force) return { skipped: "auto_read_off", applied: 0 };
+  if (!options.force && settings.last_sync_at) {
+    const minutes = (settings as { sync_interval_minutes?: number }).sync_interval_minutes ?? 15;
+    if (Date.now() - new Date(settings.last_sync_at).getTime() < minutes * 60_000 - 30_000) return { skipped: "interval", applied: 0 };
+  }
   const credentials = mailCredentials(settings);
   const sb = await admin();
   try {
