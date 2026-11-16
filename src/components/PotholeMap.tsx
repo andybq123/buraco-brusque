@@ -1,8 +1,8 @@
 import { MapContainer, Marker, Polygon, Popup, useMap, useMapEvents } from "react-leaflet";
 import { BRUSQUE_POLYGON } from "@/lib/brusque-boundary";
 import bonequinho from "@/assets/mascote.webp";
-import posteIcon from "@/assets/poste-3d.webp";
-import buracoIcon from "@/assets/buraco-3d.webp";
+import pinoPoste from "@/assets/pino-poste.png";
+import pinoBuraco from "@/assets/pino-buraco.png";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl } from "maplibre-gl";
@@ -110,10 +110,10 @@ function potholeIcon(status: string, danger = false, kind = "buraco") {
       className: "",
       html: status === "consertado"
         ? `<div class="pothole-pin pothole-pin--consertado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>`
-        : `<div class="report-miniature report-miniature--${kind} report-miniature--${status}${danger ? " report-miniature--perigo" : ""}"><img src="${kind === "iluminacao" ? posteIcon : buracoIcon}" alt="${kind === "iluminacao" ? "Iluminação com problema" : "Buraco na rua"}" draggable="false" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}</div>`,
-      iconSize: status === "consertado" ? [36, 36] : [48, 60],
-      iconAnchor: status === "consertado" ? [18, 18] : [24, 56],
-      popupAnchor: status === "consertado" ? [0, -16] : [0, -54],
+        : `<div class="report-pin${kind === "iluminacao" ? " report-pin--luz" : ""}${status === "removido" ? " report-pin--removido" : ""}"><img src="${kind === "iluminacao" ? pinoPoste : pinoBuraco}" alt="${kind === "iluminacao" ? "Iluminação com problema" : "Buraco na rua"}" draggable="false" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}</div>`,
+      iconSize: status === "consertado" ? [36, 36] : [40, 54],
+      iconAnchor: status === "consertado" ? [18, 18] : [20, 54],
+      popupAnchor: status === "consertado" ? [0, -16] : [0, -50],
     });
     iconCache.set(key, ic);
   }
