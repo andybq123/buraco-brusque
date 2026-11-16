@@ -54,3 +54,7 @@ A descoberta automática reconhece Gmail, Outlook, Yahoo e Zoho. Para domínios 
 No Gmail, ative a verificação em duas etapas e use uma **senha de aplicativo**, não a senha normal. O IMAP precisa estar ativado. Outros provedores também podem exigir liberação de SMTP/IMAP ou uma senha específica para aplicativos.
 
 Use **Testar conexão** antes de divulgar o sistema. O teste verifica envio e leitura sem mandar uma solicitação à Prefeitura.
+
+## Instalação com Docker (recomendado)
+
+Rode `bash deploy/instalar-email-docker.sh` como root. Ele pode ser repetido sem problemas: reaproveita o segredo, cria `docker-compose.override.yml` (que o Docker lê sozinho) e confere se o site enxerga a ponte. Depois de atualizar o site, rode `de-olho-email-reparar`.
