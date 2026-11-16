@@ -16,6 +16,15 @@ export interface MailConnection {
   imapSecure: boolean;
 }
 
+export const SHARDCLOUD_MAIL_CONNECTION: MailConnection = {
+  smtpHost: "mail.shardcloud.app",
+  smtpPort: 465,
+  smtpSecure: true,
+  imapHost: "mail.shardcloud.app",
+  imapPort: 993,
+  imapSecure: true,
+};
+
 export interface OuvidoriaEmailInput extends OuvidoriaInput {
   id: string;
 }
@@ -39,11 +48,17 @@ export function commonMailConnection(email: string): MailConnection | null {
   if (["zoho.com", "zoho.com.br"].includes(domain)) {
     return { smtpHost: "smtp.zoho.com", smtpPort: 465, smtpSecure: true, imapHost: "imap.zoho.com", imapPort: 993, imapSecure: true };
   }
+  if (["brusque.app.br", "shardcloud.app"].includes(domain)) return { ...SHARDCLOUD_MAIL_CONNECTION };
   return null;
 }
 
 export function makeEmailToken(number: number, random = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()) {
   return `DOR-${number}-${random}`;
+}
+
+export function shouldSkipReplySync(lastSyncAt: string | null, lastSyncStatus: string | null, intervalMinutes: number, now = Date.now()) {
+  if (!lastSyncAt || !lastSyncStatus?.startsWith("Leitura concluída:")) return false;
+  return now - new Date(lastSyncAt).getTime() < intervalMinutes * 60_000 - 30_000;
 }
 
 export function buildOuvidoriaEmail(p: OuvidoriaEmailInput, token: string, origin: string) {

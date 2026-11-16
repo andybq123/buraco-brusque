@@ -17,11 +17,13 @@ export const getOuvidoriaPanel = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: settings }, { data: queue, error }] = await Promise.all([
+    const [{ data: settings }, { data: queue, error }, { data: replies, error: repliesError }] = await Promise.all([
       supabaseAdmin.from("ouvidoria_settings").select("*").eq("id", true).maybeSingle(),
       supabaseAdmin.from("ouvidoria_email_queue").select("id, pothole_id, email_token, status, attempts, last_error, created_at, sent_at, potholes(number, address, kind)").order("created_at", { ascending: false }).limit(30),
+      supabaseAdmin.from("ouvidoria_email_replies").select("id, queue_id, sender_email, subject, protocol, confidence, applied, error, created_at").order("created_at", { ascending: false }).limit(15),
     ]);
     if (error) throw new Error(error.message);
+    if (repliesError) throw new Error(repliesError.message);
     return {
       settings: settings ? {
         recipientEmail: settings.recipient_email ?? "",
@@ -44,6 +46,7 @@ export const getOuvidoriaPanel = createServerFn({ method: "GET" })
         lastSyncStatus: settings.last_sync_status,
       } : null,
       queue: queue ?? [],
+      replies: replies ?? [],
       defaults: AI_DEFAULT_MODEL,
     };
   });
@@ -92,7 +95,7 @@ export const saveOuvidoriaSettings = createServerFn({ method: "POST" })
     const password = data.password || (previous?.password_ciphertext ? server.decryptSetting(previous.password_ciphertext) : "");
     if (!password) throw new Error("Informe a senha da caixa de e-mail.");
     const aiKey = data.aiKey || (previous?.ai_key_ciphertext ? server.decryptSetting(previous.ai_key_ciphertext) : "");
-    if (data.aiModel && !/^[a-zA-Z0-9._-]{2,100}$/.test(data.aiModel)) throw new Error("Nome de modelo de IA inválido.");
+    if (data.aiModel && !/^[a-zA-Z0-9._/-]{2,100}$/.test(data.aiModel)) throw new Error("Nome de modelo de IA inválido.");
     const { error } = await supabaseAdmin.from("ouvidoria_settings").upsert({
       id: true,
       recipient_email: data.recipientEmail,
@@ -124,6 +127,23 @@ export const testOuvidoriaSettings = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const server = await import("./ouvidoria-mail.server");
     return server.testConnection();
+  });
+
+export const listOuvidoriaAiModels = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const server = await import("./ouvidoria-mail.server");
+    return server.listAiModels();
+  });
+
+export const testOuvidoriaAiModel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ aiModel: optionalText(100) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const server = await import("./ouvidoria-mail.server");
+    return server.testAiModel(data.aiModel || undefined);
   });
 
 export const sendOuvidoriaPending = createServerFn({ method: "POST" })

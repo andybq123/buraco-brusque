@@ -7,4 +7,9 @@
 - [x] Ler respostas, identificar o protocolo com Gemini ou Groq e anexá-lo ao registro certo.
 - [x] Mostrar no painel e no mapa o estado de envio e o protocolo.
 - [x] Testar as regras, o painel e o fluxo público sem bloquear o morador quando o e-mail falhar.
-- [ ] Validar envio e leitura reais — aguardando uma caixa de e-mail e uma chave de IA configuradas pelo usuário.
+- [ ] Separar Iluminação pública em uma área própria do painel.
+- [ ] Configurar Shard Cloud (SMTP 465 e IMAP 993) e tornar a descoberta compatível com seus registros MX.
+- [ ] Validar a chave de IA, listar modelos do provedor e permitir testar o modelo escolhido.
+- [ ] Corrigir e dar visibilidade à leitura de respostas, inclusive mensagens já abertas na caixa.
+- [ ] Integrar ponte e agendamento local ao instalador, preservando configurações em reinstalações e atualizações.
+- [ ] Validar envio e leitura reais na VPS — depende das credenciais e da caixa configuradas pelo usuário.

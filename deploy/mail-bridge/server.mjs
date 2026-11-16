@@ -45,6 +45,7 @@ function preset(address) {
   if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) return ["smtp-mail.outlook.com", 587, false, "outlook.office365.com", 993, true];
   if (["yahoo.com", "yahoo.com.br"].includes(domain)) return ["smtp.mail.yahoo.com", 465, true, "imap.mail.yahoo.com", 993, true];
   if (["zoho.com", "zoho.com.br"].includes(domain)) return ["smtp.zoho.com", 465, true, "imap.zoho.com", 993, true];
+  if (["brusque.app.br", "shardcloud.app"].includes(domain)) return ["mail.shardcloud.app", 465, true, "mail.shardcloud.app", 993, true];
   return null;
 }
 
@@ -97,6 +98,7 @@ async function discover(address) {
     const mx = (await resolveMx(domain)).map((x) => x.exchange.toLowerCase()).join(" ");
     if (/google|googlemail/.test(mx)) return { smtpHost: "smtp.gmail.com", smtpPort: 465, smtpSecure: true, imapHost: "imap.gmail.com", imapPort: 993, imapSecure: true, source: "MX do Google Workspace" };
     if (/outlook|protection\.microsoft/.test(mx)) return { smtpHost: "smtp.office365.com", smtpPort: 587, smtpSecure: false, imapHost: "outlook.office365.com", imapPort: 993, imapSecure: true, source: "MX do Microsoft 365" };
+    if (/shardcloud\.app/.test(mx)) return { smtpHost: "mail.shardcloud.app", smtpPort: 465, smtpSecure: true, imapHost: "mail.shardcloud.app", imapPort: 993, imapSecure: true, source: "MX da Shard Cloud" };
   } catch { /* tenta autoconfig abaixo */ }
   const urls = [
     `https://autoconfig.${domain}/mail/config-v1.1.xml?emailaddress=${encodeURIComponent(email(address))}`,
@@ -167,8 +169,9 @@ async function readReplies(input) {
   await client.connect();
   try {
     await client.mailboxOpen("INBOX");
-    const uids = await client.search({ seen: false }, { uid: true });
-    const selected = (Array.isArray(uids) ? uids : []).slice(-30);
+    const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+    const uids = await client.search({ since }, { uid: true });
+    const selected = (Array.isArray(uids) ? uids : []).slice(-50);
     const messages = [];
     if (selected.length) {
       for await (const item of client.fetch(selected, { envelope: true, source: { maxSize: 2_000_000 } }, { uid: true })) {
@@ -177,13 +180,17 @@ async function readReplies(input) {
         const subject = text(parsed.subject, 300);
         const from = text(parsed.from?.text, 300);
         const expected = email(input.ouvidoriaEmail);
-        if (!subject.toUpperCase().includes("DOR-") && (!expected || !from.toLowerCase().includes(expected))) continue;
+        const messageText = text(parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<[^>]+>/g, " ") : ""), 20_000);
+        const hasToken = /\bDOR-\d{1,8}-[A-Z0-9]{4,12}\b/i.test(`${subject}\n${messageText}`);
+        if (!hasToken && (!expected || !from.toLowerCase().includes(expected))) continue;
         messages.push({
           uid: item.uid,
           messageId: parsed.messageId || `uid-${item.uid}`,
+          inReplyTo: parsed.inReplyTo || null,
+          references: Array.isArray(parsed.references) ? parsed.references : parsed.references ? [parsed.references] : [],
           from,
           subject,
-          text: text(parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<[^>]+>/g, " ") : ""), 20_000),
+          text: messageText,
           date: parsed.date?.toISOString() || null,
         });
       }

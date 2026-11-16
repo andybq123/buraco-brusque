@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # De Olho na Rua - instala/repara a ponte de e-mail (Docker). Pode rodar quantas vezes quiser.
 # Uso (como root):  bash instalar-email-docker.sh
-# Depois de cada atualização do site, rode:  de-olho-email-reparar
+# Um serviço local verifica a cada 5 minutos e repara a integração após atualizações.
 set -Eeuo pipefail
 umask 077
 trap 'echo; echo "ERRO na linha $LINENO. Envie esta mensagem (sem senhas)."' ERR
@@ -83,6 +83,7 @@ function preset(address) {
   if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) return ["smtp-mail.outlook.com", 587, false, "outlook.office365.com", 993, true];
   if (["yahoo.com", "yahoo.com.br"].includes(domain)) return ["smtp.mail.yahoo.com", 465, true, "imap.mail.yahoo.com", 993, true];
   if (["zoho.com", "zoho.com.br"].includes(domain)) return ["smtp.zoho.com", 465, true, "imap.zoho.com", 993, true];
+  if (["brusque.app.br", "shardcloud.app"].includes(domain)) return ["mail.shardcloud.app", 465, true, "mail.shardcloud.app", 993, true];
   return null;
 }
 
@@ -135,6 +136,7 @@ async function discover(address) {
     const mx = (await resolveMx(domain)).map((x) => x.exchange.toLowerCase()).join(" ");
     if (/google|googlemail/.test(mx)) return { smtpHost: "smtp.gmail.com", smtpPort: 465, smtpSecure: true, imapHost: "imap.gmail.com", imapPort: 993, imapSecure: true, source: "MX do Google Workspace" };
     if (/outlook|protection\.microsoft/.test(mx)) return { smtpHost: "smtp.office365.com", smtpPort: 587, smtpSecure: false, imapHost: "outlook.office365.com", imapPort: 993, imapSecure: true, source: "MX do Microsoft 365" };
+    if (/shardcloud\.app/.test(mx)) return { smtpHost: "mail.shardcloud.app", smtpPort: 465, smtpSecure: true, imapHost: "mail.shardcloud.app", imapPort: 993, imapSecure: true, source: "MX da Shard Cloud" };
   } catch { /* tenta autoconfig abaixo */ }
   const urls = [
     `https://autoconfig.${domain}/mail/config-v1.1.xml?emailaddress=${encodeURIComponent(email(address))}`,
@@ -205,8 +207,9 @@ async function readReplies(input) {
   await client.connect();
   try {
     await client.mailboxOpen("INBOX");
-    const uids = await client.search({ seen: false }, { uid: true });
-    const selected = (Array.isArray(uids) ? uids : []).slice(-30);
+    const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+    const uids = await client.search({ since }, { uid: true });
+    const selected = (Array.isArray(uids) ? uids : []).slice(-50);
     const messages = [];
     if (selected.length) {
       for await (const item of client.fetch(selected, { envelope: true, source: { maxSize: 2_000_000 } }, { uid: true })) {
@@ -215,13 +218,17 @@ async function readReplies(input) {
         const subject = text(parsed.subject, 300);
         const from = text(parsed.from?.text, 300);
         const expected = email(input.ouvidoriaEmail);
-        if (!subject.toUpperCase().includes("DOR-") && (!expected || !from.toLowerCase().includes(expected))) continue;
+        const messageText = text(parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<[^>]+>/g, " ") : ""), 20_000);
+        const hasToken = /\bDOR-\d{1,8}-[A-Z0-9]{4,12}\b/i.test(`${subject}\n${messageText}`);
+        if (!hasToken && (!expected || !from.toLowerCase().includes(expected))) continue;
         messages.push({
           uid: item.uid,
           messageId: parsed.messageId || `uid-${item.uid}`,
+          inReplyTo: parsed.inReplyTo || null,
+          references: Array.isArray(parsed.references) ? parsed.references : parsed.references ? [parsed.references] : [],
           from,
           subject,
-          text: text(parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<[^>]+>/g, " ") : ""), 20_000),
+          text: messageText,
           date: parsed.date?.toISOString() || null,
         });
       }
@@ -267,14 +274,33 @@ server.listen(PORT, HOST, () => console.log(`Ponte de e-mail ouvindo em ${HOST}:
 for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => server.close(() => process.exit(0)));
 EOF_SRV
 
+# Depois de uma atualização do site, o código versionado é a referência mais recente.
+if [ -f "$APP_DIR/deploy/mail-bridge/server.mjs" ]; then
+  cp "$APP_DIR/deploy/mail-bridge/server.mjs" "$BRIDGE_DIR/server.mjs"
+fi
+if [ -f "$APP_DIR/deploy/mail-bridge/package.json" ]; then
+  cp "$APP_DIR/deploy/mail-bridge/package.json" "$BRIDGE_DIR/package.json"
+fi
+
 echo "== 2/5 Segredo (reaproveita o existente) =="
 ENV_FILE="$BRIDGE_DIR/bridge.env"
 TOKEN=""
+CRON_SECRET=""
+PUBLIC_URL=""
 [ -f "$ENV_FILE" ] && TOKEN="$(sed -n 's/^MAIL_BRIDGE_TOKEN=//p' "$ENV_FILE" | head -1)"
+[ -f "$ENV_FILE" ] && CRON_SECRET="$(sed -n 's/^LOVABLE_CRON_SECRET=//p' "$ENV_FILE" | head -1)"
+[ -f "$ENV_FILE" ] && PUBLIC_URL="$(sed -n 's/^APP_PUBLIC_URL=//p' "$ENV_FILE" | head -1)"
 [ -n "$TOKEN" ] || TOKEN="$(openssl rand -hex 32 2>/dev/null || head -c32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+[ -n "$CRON_SECRET" ] || CRON_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+[ -n "$PUBLIC_URL" ] || PUBLIC_URL="https://brusque.app.br"
+HOST_PORT="$(docker port "$APP_CONTAINER" 8080/tcp 2>/dev/null | head -1 | awk -F: '{print $NF}')"
+[ -n "$HOST_PORT" ] || HOST_PORT=8081
 cat > "$ENV_FILE" <<EOF_ENV
 MAIL_BRIDGE_TOKEN=$TOKEN
 MAIL_BRIDGE_URL=http://de-olho-mail:3001
+LOVABLE_CRON_SECRET=$CRON_SECRET
+APP_PUBLIC_URL=$PUBLIC_URL
+OUVIDORIA_SYNC_URL=http://127.0.0.1:$HOST_PORT/api/public/ouvidoria-sync
 EOF_ENV
 chmod 600 "$ENV_FILE"
 
@@ -316,15 +342,65 @@ for c in $(docker ps -aq --filter "label=com.docker.compose.project=dor-email");
 
 echo "== 5/5 Subindo ponte e reiniciando o site (alguns segundos fora do ar) =="
 cd "$APP_DIR"
-docker compose -p "$PROJECT" -f docker-compose.yml -f docker-compose.override.yml up -d --force-recreate de-olho-mail "$SERVICE"
+docker compose -p "$PROJECT" -f docker-compose.yml -f docker-compose.override.yml up -d --force-recreate de-olho-mail
+docker compose -p "$PROJECT" -f docker-compose.yml -f docker-compose.override.yml up -d "$SERVICE"
 
-# comando de reparo para usar após atualizações
-cp "$0" /usr/local/sbin/de-olho-email-instalar 2>/dev/null || true
-cat > /usr/local/bin/de-olho-email-reparar <<EOF_REP
+# Comandos de reparo manual e sincronização automática na própria VPS.
+INSTALLER_SOURCE="$APP_DIR/deploy/instalar-email-docker.sh"
+[ -f "$INSTALLER_SOURCE" ] || INSTALLER_SOURCE="$0"
+cp "$INSTALLER_SOURCE" /usr/local/sbin/de-olho-email-instalar 2>/dev/null || true
+cat > /usr/local/bin/de-olho-email-reparar <<'EOF_REP'
 #!/usr/bin/env bash
 exec bash /usr/local/sbin/de-olho-email-instalar
 EOF_REP
-chmod 755 /usr/local/bin/de-olho-email-reparar /usr/local/sbin/de-olho-email-instalar 2>/dev/null || true
+cat > /usr/local/sbin/de-olho-email-sincronizar <<EOF_SYNC
+#!/usr/bin/env bash
+set -Eeuo pipefail
+set -a
+. "$ENV_FILE"
+set +a
+healthy=1
+docker exec "$APP_CONTAINER" sh -c '[ -n "\$MAIL_BRIDGE_TOKEN" ] && [ -n "\$LOVABLE_CRON_SECRET" ]' >/dev/null 2>&1 || healthy=0
+if [ "\$healthy" = 1 ]; then
+  docker exec "$APP_CONTAINER" node -e 'fetch(process.env.MAIL_BRIDGE_URL+"/health",{method:"POST",headers:{authorization:"Bearer "+process.env.MAIL_BRIDGE_TOKEN},body:"{}"}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))' >/dev/null 2>&1 || healthy=0
+fi
+if [ "\$healthy" = 0 ]; then
+  echo "Integração ausente após atualização; reparando automaticamente."
+  /usr/local/bin/de-olho-email-reparar
+  set -a
+  . "$ENV_FILE"
+  set +a
+fi
+curl --fail --silent --show-error --max-time 120 -X POST \\
+  -H "Authorization: Bearer \$LOVABLE_CRON_SECRET" \\
+  "\$OUVIDORIA_SYNC_URL"
+EOF_SYNC
+cat > /etc/systemd/system/de-olho-email-sync.service <<'EOF_SERVICE'
+[Unit]
+Description=Leitura de respostas da Ouvidoria - De Olho na Rua
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/de-olho-email-sincronizar
+EOF_SERVICE
+cat > /etc/systemd/system/de-olho-email-sync.timer <<'EOF_TIMER'
+[Unit]
+Description=Agendamento local do e-mail - De Olho na Rua
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF_TIMER
+chmod 755 /usr/local/bin/de-olho-email-reparar /usr/local/sbin/de-olho-email-instalar /usr/local/sbin/de-olho-email-sincronizar 2>/dev/null || true
+command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }
+systemctl daemon-reload
+systemctl enable --now de-olho-email-sync.timer
 
 echo; echo "== Verificação =="
 ok=1
@@ -338,8 +414,10 @@ fetch(process.env.MAIL_BRIDGE_URL+"/health",{method:"POST",headers:{authorizatio
 .then(r=>{if(!r.ok)throw r.status;console.log("Ponte: respondendo OK")}).catch(e=>{console.log("Ponte: sem resposta",e);process.exit(1)})'; then :; else ok=0; docker logs --tail 20 "${PROJECT}-de-olho-mail-1" 2>&1 || true; fi
 echo
 if [ $ok = 1 ]; then
-  echo "TUDO PRONTO. No painel: Ouvidoria e e-mail > Testar conexão."
+  echo "TUDO PRONTO. No painel: Ouvidoria e e-mail > Testar e-mail."
 else
   echo "Algo falhou acima. Envie estas mensagens."
 fi
-echo "Após atualizar o site no futuro, rode:  de-olho-email-reparar"
+systemctl start --no-block de-olho-email-sync.service || true
+echo "Verificação local instalada: a cada 5 minutos, com reparo automático após atualizações."
+echo "Reparo manual, se necessário: de-olho-email-reparar"

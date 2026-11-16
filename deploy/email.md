@@ -2,7 +2,11 @@
 
 ## Instalação com Docker (recomendado — use esta)
 
-Rode `bash deploy/instalar-email-docker.sh` como root. Ele pode ser repetido sem problemas: reaproveita o segredo, cria `docker-compose.override.yml` (que o Docker lê sozinho) e confere se o site enxerga a ponte. Depois de atualizar o site, rode `de-olho-email-reparar`.
+Rode `bash deploy/instalar-email-docker.sh` como root. Ele pode ser repetido sem problemas: reaproveita os segredos e a configuração da caixa, usa o código mais recente de `deploy/mail-bridge`, cria `docker-compose.override.yml` e confere se o site enxerga a ponte.
+
+O instalador também cria um agendamento local a cada 5 minutos. O intervalo escolhido no painel continua sendo respeitado pelo aplicativo. Se uma atualização remover a ligação entre o site e a ponte, o próprio agendamento executa o reparo automaticamente. O comando manual `de-olho-email-reparar` continua disponível.
+
+A Shard Cloud é reconhecida automaticamente pelo domínio do projeto e pelos registros MX. A configuração fica visível no painel: SMTP `mail.shardcloud.app:465` e IMAP `mail.shardcloud.app:993`, ambos com SSL direto.
 
 ## Alternativa sem Docker (systemd)
 
@@ -55,8 +59,8 @@ Entre em **Painel → Ouvidoria e e-mail** e informe:
 2. E-mail e senha da sua caixa.
 3. Provedor e chave da IA (Gemini ou Groq).
 
-A descoberta automática reconhece Gmail, Outlook, Yahoo e Zoho. Para domínios próprios, ela também consulta os registros MX e a configuração automática publicada pelo provedor. Se o provedor não publicar esses dados, desligue a descoberta automática e preencha servidores e portas.
+A descoberta automática reconhece Shard Cloud, Gmail, Outlook, Yahoo e Zoho. Para domínios próprios, ela também consulta os registros MX e a configuração automática publicada pelo provedor. Se o provedor não publicar esses dados, desligue a descoberta automática e preencha servidores e portas.
 
 No Gmail, ative a verificação em duas etapas e use uma **senha de aplicativo**, não a senha normal. O IMAP precisa estar ativado. Outros provedores também podem exigir liberação de SMTP/IMAP ou uma senha específica para aplicativos.
 
-Use **Testar conexão** antes de divulgar o sistema. O teste verifica envio e leitura sem mandar uma solicitação à Prefeitura.
+Use **Testar e-mail** antes de divulgar o sistema. O teste verifica SMTP e IMAP sem mandar uma solicitação à Prefeitura. Na área de IA, **Validar chave e buscar modelos** consulta o catálogo real do provedor; depois escolha um modelo e use **Testar modelo selecionado**. O histórico **Diagnóstico das respostas** mostra protocolos anexados, mensagens ignoradas e erros de leitura.

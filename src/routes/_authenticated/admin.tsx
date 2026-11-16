@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle, Check, CheckCircle2, Construction, ExternalLink, LogOut, MapPin, RotateCcw,
   Search, ShieldCheck, Trash2, UserPlus, Users, Wrench, X,
-  LayoutDashboard, BarChart3, Landmark, Download, Clock, TrendingUp, ArrowRight, Mail,
+  LayoutDashboard, BarChart3, Landmark, Download, Clock, TrendingUp, ArrowRight, Mail, Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,8 @@ function AdminPage() {
   const isAdmin = role.data === "admin";
   const sections = [
     { id: "geral" as const, label: "Visão geral", short: "Geral", hint: "Resumo do andamento dos reparos na cidade.", icon: <LayoutDashboard className="h-5 w-5" /> },
-    { id: "buracos" as const, label: "Buracos", short: "Buracos", hint: "Acompanhe, conclua ou remova os avisos dos moradores.", icon: <MapPin className="h-5 w-5" /> },
+    { id: "buracos" as const, label: "Buracos", short: "Buracos", hint: "Acompanhe, conclua ou remova os buracos informados pelos moradores.", icon: <MapPin className="h-5 w-5" /> },
+    { id: "iluminacao" as const, label: "Iluminação pública", short: "Iluminação", hint: "Gerencie os pontos com defeito na iluminação pública, separados dos buracos.", icon: <Lightbulb className="h-5 w-5" /> },
     { id: "acessos" as const, label: "Acessos", short: "Acessos", hint: "Visitas ao site, de onde vêm e quem está online.", icon: <BarChart3 className="h-5 w-5" /> },
     ...(isAdmin ? [
       { id: "ouvidoria" as const, label: "Ouvidoria e e-mail", short: "E-mail", hint: "Envio automático, caixa de respostas e identificação de protocolos.", icon: <Mail className="h-5 w-5" /> },
@@ -150,7 +151,8 @@ function AdminPage() {
             <p className="text-sm text-muted-foreground">{current.hint}</p>
           </div>
           {section === "geral" && <Overview onGo={setSection} />}
-          {section === "buracos" && <Potholes isAdmin={isAdmin} email={user.email ?? ""} />}
+          {section === "buracos" && <Potholes kind="buraco" isAdmin={isAdmin} email={user.email ?? ""} />}
+          {section === "iluminacao" && <Potholes kind="iluminacao" isAdmin={isAdmin} email={user.email ?? ""} />}
           {section === "acessos" && <VisitsPanel />}
           {section === "ouvidoria" && isAdmin && <OuvidoriaSettings />}
           {section === "usuarios" && isAdmin && <StaffUsers />}
@@ -168,7 +170,7 @@ function AdminPage() {
   );
 }
 
-type Section = "geral" | "buracos" | "acessos" | "ouvidoria" | "usuarios";
+type Section = "geral" | "buracos" | "iluminacao" | "acessos" | "ouvidoria" | "usuarios";
 
 const adminPotholesQuery = {
   queryKey: ["potholes", "admin"],
@@ -287,14 +289,14 @@ function Overview({ onGo }: { onGo: (s: Section) => void }) {
   );
 }
 
-function exportCsv(rows: Pothole[]) {
+function exportCsv(rows: Pothole[], kind: "buraco" | "iluminacao") {
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const head = ["Nº", "Endereço", "Status", "Tamanho", "Perigos", "Avisos", "Latitude", "Longitude", "Informado em", "Concluído em", "Equipe do reparo", "Registrado por", "Protocolo Ouvidoria"];
   const lines = rows.map((p) => [p.number, p.address, STATUS_LABEL[p.status], sizeLabel(p.size), p.hazards.map(hazardLabel).join("; "), p.report_count, p.lat, p.lng, formatDate(p.created_at), p.resolved_at ? formatDate(p.resolved_at) : "", p.repaired_by, p.resolved_by_email, p.ouvidoria_protocol].map(esc).join(";"));
   const blob = new Blob(["\ufeff" + [head.map(esc).join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `buracos-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `${kind === "iluminacao" ? "iluminacao-publica" : "buracos"}-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -311,14 +313,13 @@ function Stat({ label, value, icon, tone }: { label: string; value: number; icon
   );
 }
 
-function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
+function Potholes({ isAdmin, email, kind }: { isAdmin: boolean; email: string; kind: "buraco" | "iluminacao" }) {
   const qc = useQueryClient();
   const purge = useServerFn(purgePotholes);
   const [filter, setFilter] = useState<PotholeStatus>("aberto");
   const [focus, setFocus] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [onlyDanger, setOnlyDanger] = useState(false);
-  const [kindTab, setKindTab] = useState<"buraco" | "iluminacao">("buraco");
   const [search, setSearch] = useState("");
   const [repairFor, setRepairFor] = useState<Pothole | null>(null);
   const [repairedBy, setRepairedBy] = useState("");
@@ -391,8 +392,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
   };
 
   const q = search.trim().toLowerCase();
-  const kindAll = allItems.filter((p) => (p.kind === "iluminacao" ? "iluminacao" : "buraco") === kindTab);
-  const all = kindAll;
+  const all = allItems.filter((p) => (p.kind === "iluminacao" ? "iluminacao" : "buraco") === kind);
   const list = all
     .filter((p) => p.status === filter && (!onlyDanger || p.hazards.length > 0) && (!onlyNotSent || !p.ouvidoria_protocol))
     .filter((p) => !q || String(p.number) === q.replace("#", "") || (p.address ?? "").toLowerCase().includes(q) || (p.repaired_by ?? "").toLowerCase().includes(q))
@@ -402,14 +402,8 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
 
   return (
     <div className="space-y-4">
-      <Tabs value={kindTab} onValueChange={(v) => { setKindTab(v as "buraco" | "iluminacao"); setSelected(null); setFocus(null); }}>
-        <TabsList className="h-11">
-          <TabsTrigger value="buraco" className="px-4">Buracos ({allItems.filter((p) => p.kind !== "iluminacao" && p.status === "aberto").length})</TabsTrigger>
-          <TabsTrigger value="iluminacao" className="px-4">Iluminação pública ({allItems.filter((p) => p.kind === "iluminacao" && p.status === "aberto").length})</TabsTrigger>
-        </TabsList>
-      </Tabs>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Abertos" value={count("aberto")} icon={<Construction className="h-5 w-5" />} tone="bg-primary text-primary-foreground" />
+        <Stat label={kind === "iluminacao" ? "Pontos com problema" : "Buracos abertos"} value={count("aberto")} icon={kind === "iluminacao" ? <Lightbulb className="h-5 w-5" /> : <Construction className="h-5 w-5" />} tone="bg-primary text-primary-foreground" />
         <Stat label="Perigosos" value={dangerous} icon={<AlertTriangle className="h-5 w-5" />} tone="bg-destructive text-destructive-foreground" />
         <Stat label="Consertados" value={count("consertado")} icon={<CheckCircle2 className="h-5 w-5" />} tone="bg-success text-success-foreground" />
         <Stat label="Abertos sem Ouvidoria" value={all.filter((p) => p.status === "aberto" && !p.ouvidoria_protocol).length} icon={<Landmark className="h-5 w-5" />} tone="bg-muted text-muted-foreground" />
@@ -433,7 +427,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
         <label className="flex items-center gap-2 text-sm font-medium">
           <Switch checked={onlyNotSent} onCheckedChange={setOnlyNotSent} /> Não enviados à Ouvidoria
         </label>
-        <Button variant="outline" onClick={() => exportCsv(list)} disabled={list.length === 0}>
+        <Button variant="outline" onClick={() => exportCsv(list, kind)} disabled={list.length === 0}>
           <Download className="mr-1 h-4 w-4" /> Exportar
         </Button>
         {isAdmin && filter === "removido" && list.length > 0 && (
@@ -458,7 +452,7 @@ function Potholes({ isAdmin, email }: { isAdmin: boolean; email: string }) {
         <div className="space-y-3">
           {potholes.isLoading && <p className="py-8 text-center text-muted-foreground">Carregando…</p>}
           {!potholes.isLoading && list.length === 0 && (
-            <p className="rounded-xl border bg-card py-10 text-center text-muted-foreground">Nenhum buraco aqui.</p>
+            <p className="rounded-xl border bg-card py-10 text-center text-muted-foreground">{kind === "iluminacao" ? "Nenhum ponto de iluminação aqui." : "Nenhum buraco aqui."}</p>
           )}
 
           {list.map((p) => (

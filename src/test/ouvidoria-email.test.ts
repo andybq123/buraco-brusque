@@ -7,6 +7,7 @@ import {
   googleMapsLink,
   makeEmailToken,
   parseAiProtocolResult,
+  shouldSkipReplySync,
 } from "@/lib/ouvidoria-email";
 
 const report = {
@@ -62,5 +63,27 @@ describe("e-mail da Ouvidoria", () => {
     expect(commonMailConnection("equipe@gmail.com")?.smtpHost).toBe("smtp.gmail.com");
     expect(commonMailConnection("equipe@outlook.com")?.imapHost).toBe("outlook.office365.com");
     expect(commonMailConnection("equipe@provedorproprio.com.br")).toBeNull();
+  });
+
+  it("usa as portas SSL oficiais da Shard Cloud no domínio do projeto", () => {
+    expect(commonMailConnection("deolhonarua@brusque.app.br")).toEqual({
+      smtpHost: "mail.shardcloud.app",
+      smtpPort: 465,
+      smtpSecure: true,
+      imapHost: "mail.shardcloud.app",
+      imapPort: 993,
+      imapSecure: true,
+    });
+  });
+
+  it("respeita o intervalo após uma leitura concluída", () => {
+    const now = new Date("2026-11-16T23:43:00Z").getTime();
+    expect(shouldSkipReplySync("2026-11-16T23:30:00Z", "Leitura concluída: 0 protocolo(s)", 15, now)).toBe(true);
+    expect(shouldSkipReplySync("2026-11-16T23:20:00Z", "Leitura concluída: 0 protocolo(s)", 15, now)).toBe(false);
+  });
+
+  it("não deixa uma falha na nuvem impedir a próxima leitura local", () => {
+    const now = new Date("2026-11-16T23:43:00Z").getTime();
+    expect(shouldSkipReplySync("2026-11-16T23:42:00Z", "Falha: ponte indisponível", 60, now)).toBe(false);
   });
 });
