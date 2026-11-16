@@ -186,5 +186,9 @@ input, select, textarea { font-size: 16px !important; }
 }
 @media (prefers-reduced-motion: reduce) { .buddy img { animation: none !important; } }
 
-.pothole-pin--luz { background: var(--secondary); color: var(--primary); border-color: var(--primary); }
-.pothole-pin--luz svg { width: 22px; height: 22px; }
+.report-miniature { position: relative; width: 48px; height: 60px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+.report-miniature img { width: 48px; height: 52px; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 1px 1px var(--card)) drop-shadow(0 2px 2px var(--secondary)); user-select: none; -webkit-user-drag: none; }
+.report-miniature--buraco img { height: 36px; }
+.report-miniature--removido { opacity: 0.6; }
+.report-miniature--perigo img { filter: drop-shadow(0 0 2px var(--destructive)) drop-shadow(0 0 2px var(--destructive)); }
+.report-miniature .pothole-pin-alert { top: auto; bottom: 28px; right: -2px; }

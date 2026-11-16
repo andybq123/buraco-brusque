@@ -1,6 +1,8 @@
 import { MapContainer, Marker, Polygon, Popup, useMap, useMapEvents } from "react-leaflet";
 import { BRUSQUE_POLYGON } from "@/lib/brusque-boundary";
 import bonequinho from "@/assets/mascote.webp";
+import posteIcon from "@/assets/poste-3d.webp";
+import buracoIcon from "@/assets/buraco-3d.webp";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl } from "maplibre-gl";
@@ -100,21 +102,18 @@ function FlyTo({ target }: { target?: [number, number] | null }) {
 }
 
 const iconCache = new Map<string, L.DivIcon>();
-const LAMP_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 22h6M12 22V8"/><path d="M12 8c0-3 2-5 5-5h1"/><path d="M15.5 3h5l-1 3h-3z" fill="currentColor"/></svg>`;
 function potholeIcon(status: string, danger = false, kind = "buraco") {
   const key = `${status}-${danger}-${kind}`;
   let ic = iconCache.get(key);
   if (!ic) {
     ic = L.divIcon({
       className: "",
-      html: kind === "iluminacao" && status !== "consertado"
-        ? `<div class="pothole-pin pothole-pin--luz pothole-pin--${status}">${LAMP_SVG}</div>`
-        : status === "consertado"
+      html: status === "consertado"
         ? `<div class="pothole-pin pothole-pin--consertado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>`
-        : `<div class="pothole-pin pothole-pin--${status}${danger ? " pothole-pin--perigo" : ""}"><img src="/favicon.png" alt="" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}</div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-      popupAnchor: [0, -16],
+        : `<div class="report-miniature report-miniature--${kind} report-miniature--${status}${danger ? " report-miniature--perigo" : ""}"><img src="${kind === "iluminacao" ? posteIcon : buracoIcon}" alt="${kind === "iluminacao" ? "Iluminação com problema" : "Buraco na rua"}" draggable="false" />${danger ? '<span class="pothole-pin-alert">!</span>' : ""}</div>`,
+      iconSize: status === "consertado" ? [36, 36] : [48, 60],
+      iconAnchor: status === "consertado" ? [18, 18] : [24, 56],
+      popupAnchor: status === "consertado" ? [0, -16] : [0, -54],
     });
     iconCache.set(key, ic);
   }
