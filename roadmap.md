@@ -13,3 +13,5 @@
 - [x] Corrigir e dar visibilidade à leitura de respostas, inclusive mensagens já abertas na caixa.
 - [x] Integrar ponte e agendamento local ao instalador, preservando configurações em reinstalações e atualizações.
 - [ ] Validar envio, chave de IA e leitura reais na VPS — depende das credenciais e da caixa configuradas pelo usuário.
+
+- [x] Remover o envio por favoritos, mantendo encaminhamento por e-mail e edição do protocolo.

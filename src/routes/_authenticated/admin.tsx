@@ -29,7 +29,6 @@ import { LazyMap } from "@/components/LazyMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdmin, listAdmins, purgePotholes, removeAdmin, type StaffRole } from "@/lib/admin.functions";
-import { BOOKMARKLET, buildOuvidoriaReport, encodeOuvidoria, OUVIDORIA_URL } from "@/lib/ouvidoria";
 import { formatDate, HAZARDS, type Pothole, type PotholeStatus, hazardLabel, sizeLabel } from "@/lib/potholes";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -537,7 +536,7 @@ function Potholes({ isAdmin, email, kind }: { isAdmin: boolean; email: string; k
                 )}
                 {p.status !== "removido" && (
                   <Button size="sm" variant="outline" className="w-full" onClick={() => { setProtocol(p.ouvidoria_protocol ?? ""); setOuvFor(p); }}>
-                    <Landmark className="mr-1 h-4 w-4" /> {p.ouvidoria_protocol ? "Ouvidoria · editar protocolo" : p.ouvidoria_email_sent_at ? "Ouvidoria · aguardando protocolo" : "Enviar à Ouvidoria"}
+                    <Landmark className="mr-1 h-4 w-4" /> {p.ouvidoria_protocol ? "Ouvidoria · editar protocolo" : p.ouvidoria_email_sent_at ? "Ouvidoria · aguardando protocolo" : "Ouvidoria · registrar protocolo"}
                   </Button>
                 )}
                 {p.status !== "aberto" && (
@@ -578,44 +577,18 @@ function Potholes({ isAdmin, email, kind }: { isAdmin: boolean; email: string; k
       <Dialog open={!!ouvFor} onOpenChange={(v) => !v && setOuvFor(null)}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Enviar à Ouvidoria · #{ouvFor?.number}</DialogTitle>
-            <DialogDescription>O formulário da Prefeitura é preenchido pelo favorito. Você só marca "Não sou um robô" e clica em Registrar.</DialogDescription>
+            <DialogTitle>Protocolo da Ouvidoria · #{ouvFor?.number}</DialogTitle>
+            <DialogDescription>
+              {ouvFor?.ouvidoria_email_sent_at
+                ? "E-mail enviado à Ouvidoria. Aguardando o protocolo na resposta."
+                : "Encaminhamento por e-mail conforme a configuração em Ouvidoria e e-mail."}
+            </DialogDescription>
           </DialogHeader>
-          {ouvFor && (() => {
-            const d = buildOuvidoriaReport(ouvFor, window.location.origin);
-            return (
-              <div className="space-y-4 text-sm">
-                <ol className="list-decimal space-y-2 pl-5">
-                  <li>
-                    Só na primeira vez: arraste este botão para a barra de favoritos do navegador.
-                    <div className="mt-1">
-                      <a
-                        ref={(el) => { if (el) el.setAttribute("href", BOOKMARKLET); }}
-                        onClick={(e) => { e.preventDefault(); toast.info("Arraste o botão para a barra de favoritos."); }}
-                        className="inline-block cursor-grab rounded-md bg-primary px-3 py-1.5 font-semibold text-primary-foreground"
-                      >Preencher De Olho na Rua</a>
-                    </div>
-                  </li>
-                  <li>
-                    <a className="font-semibold underline" target="_blank" rel="noreferrer" href={`${OUVIDORIA_URL}#deolho=${encodeOuvidoria(d)}`}>Abrir a Ouvidoria</a>. Se pedir, faça a Identificação (passo 1).
-                  </li>
-                  <li>No passo 2, clique no favorito <b>Preencher De Olho na Rua</b>, confira, marque "Não sou um robô" e clique em Registrar. Se o favorito pedir um código, <button type="button" className="font-semibold underline" onClick={() => navigator.clipboard?.writeText(encodeOuvidoria(d)).then(() => toast.success("Código copiado. Cole quando o favorito pedir."))}>copie o código aqui</button>.</li>
-                  <li>Cole abaixo o número de protocolo que a Prefeitura gerou.</li>
-                </ol>
-                <div className="rounded-lg bg-muted p-3">
-                  <div className="mb-1 font-semibold">Texto que será enviado (prioridade {d.prioridade})</div>
-                  <p className="whitespace-pre-wrap">{d.endereco}</p>
-                  <p className="mt-1 whitespace-pre-wrap">{d.relato}</p>
-                  <Button size="sm" variant="outline" className="mt-2" onClick={() => navigator.clipboard?.writeText(`${d.endereco}\n\n${d.relato}`).then(() => toast.success("Texto copiado."))}>Copiar texto</Button>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="protocol">Número de protocolo</Label>
-                  <Input id="protocol" maxLength={60} placeholder="Ex.: 12.345/2026" value={protocol} onChange={(e) => setProtocol(e.target.value)} />
-                  <p className="text-xs text-muted-foreground">O protocolo aparece para todos no mapa público.</p>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="space-y-2">
+            <Label htmlFor="protocol">Número de protocolo</Label>
+            <Input id="protocol" maxLength={60} placeholder="Ex.: 12.345/2026" value={protocol} onChange={(e) => setProtocol(e.target.value)} />
+            <p className="text-xs text-muted-foreground">O protocolo aparece para todos no mapa público.</p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOuvFor(null)}>Fechar</Button>
             <Button disabled={busy} onClick={saveProtocol}>Salvar protocolo</Button>
