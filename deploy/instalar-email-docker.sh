@@ -400,7 +400,7 @@ EOF_TIMER
 chmod 755 /usr/local/bin/de-olho-email-reparar /usr/local/sbin/de-olho-email-instalar /usr/local/sbin/de-olho-email-sincronizar 2>/dev/null || true
 
 # Liga o reparo do e-mail ao atualizar.sh (pausa o reparo automatico durante a atualizacao e religa no fim).
-for UPD in /root/*/buraco-deploy/atualizar.sh /root/buraco-deploy/atualizar.sh "$APP_DIR/atualizar.sh"; do
+for UPD in /root/*/buraco-deploy/{atualizar,deploy,dominio}.sh /root/buraco-deploy/{atualizar,deploy,dominio}.sh "$APP_DIR/atualizar.sh"; do
   [ -f "$UPD" ] || continue
   grep -q "DE-OLHO-EMAIL-HOOK" "$UPD" && continue
   sed -i '1a\
