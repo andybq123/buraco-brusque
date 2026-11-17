@@ -101,13 +101,30 @@ export function extractEmailToken(text: string) {
 
 export function cleanProtocol(value: unknown) {
   const v = String(value ?? "").trim().replace(/[.,;:)\]}"']+$/g, "").slice(0, 60);
-  return /^[A-Z0-9][A-Z0-9./-]{1,59}$/i.test(v) ? v : null;
+  return /^[A-Z0-9][A-Z0-9./-]{1,59}$/i.test(v) && /\d/.test(v) ? v : null;
+}
+
+/** Remove o e-mail original citado na resposta, para não confundir o texto pedido com o protocolo. */
+export function stripQuotedReply(text: string) {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^(em|on)\s.+(escreveu|wrote)\s*:?$/i.test(t) || /^-{2,}\s*(mensagem original|original message)/i.test(t) || /^(de|from)\s*:\s*.+@/i.test(t) || t.startsWith("À Ouvidoria da Prefeitura")) break;
+    if (t.startsWith(">")) continue;
+    out.push(line);
+  }
+  return out.join("\n").trim();
 }
 
 /** Caminho determinístico: não gasta IA quando a resposta já diz “protocolo: …”. */
 export function extractLabeledProtocol(text: string) {
-  const match = text.match(/protocolo(?:\s+(?:de|do|da)\s+[\p{L}]+){0,2}\s*(?:n[ºo°.]*|número|numero|é|e)?\s*[:=\-]?\s*([A-Z0-9][A-Z0-9./-]{1,59})/iu);
-  return match?.[1] ? cleanProtocol(match[1]) : null;
+  const re = /protocolo(?:\s+(?:de|do|da)\s+[\p{L}]+){0,2}\s*(?:n[ºo°.]*|número|numero|é|e)?\s*[:=\-]?\s*([A-Z0-9][A-Z0-9./-]{1,59})/giu;
+  for (const m of text.matchAll(re)) {
+    const v = m[1] ? cleanProtocol(m[1]) : null;
+    if (v) return v;
+  }
+  return null;
 }
 
 export interface AiProtocolResult {

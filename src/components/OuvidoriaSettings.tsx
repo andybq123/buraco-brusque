@@ -169,7 +169,10 @@ export function OuvidoriaSettings() {
           <div><h2 className="text-lg">Envios e respostas</h2><p className="text-sm text-muted-foreground">Novas tentativas acontecem a cada 5 minutos; as respostas respeitam o intervalo definido acima.</p></div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("send", async () => { const r = await sendPending({}); if (!r.sent && r.errors?.length) throw new Error(r.errors[0]); }, "Envio dos registros pendentes concluído.")}><Send className="mr-1 h-4 w-4" />Enviar pendentes</Button>
-            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("sync", async () => { const r = await syncReplies({}); toast.info(`${r.read ?? 0} lida(s), ${r.applied ?? 0} protocolo(s) anexado(s), ${r.duplicates ?? 0} já processada(s).`); }, "Caixa de respostas verificada.")}><RefreshCw className={`mr-1 h-4 w-4 ${busy === "sync" ? "animate-spin" : ""}`} />Verificar respostas</Button>
+            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("sync", async () => { const r = await syncReplies({}); const x = r as { read?: number; applied?: number; duplicates?: number; unmatched?: number; skipped?: string };
+              if (x.skipped === "configure_email") toast.warning("Salve o e-mail e a senha antes de verificar.");
+              else if (!x.read) toast.warning("Nenhuma resposta com o código DOR-… foi encontrada na caixa de entrada (últimos 45 dias).");
+              else toast.info(`${x.read} resposta(s) lida(s): ${x.applied ?? 0} protocolo(s) anexado(s), ${x.unmatched ?? 0} sem protocolo identificado, ${x.duplicates ?? 0} já aplicada(s).`); }, "Caixa de respostas verificada.")}><RefreshCw className={`mr-1 h-4 w-4 ${busy === "sync" ? "animate-spin" : ""}`} />Verificar respostas</Button>
           </div>
         </div>
         {panel.data?.settings?.lastSyncStatus && <p className="border-b px-4 py-2 text-xs text-muted-foreground">Última verificação{panel.data.settings.lastSyncAt ? ` concluída em ${formatDate(panel.data.settings.lastSyncAt)}` : ""}: {panel.data.settings.lastSyncStatus}</p>}

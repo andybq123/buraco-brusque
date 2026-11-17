@@ -6,6 +6,7 @@ import {
   commonMailConnection,
   extractEmailToken,
   extractLabeledProtocol,
+  stripQuotedReply,
   makeEmailToken,
   parseAiProtocolResult,
   shouldSkipReplySync,
@@ -302,9 +303,9 @@ export async function syncReplies(options: { force?: boolean } = {}) {
   try {
     const { messages } = await bridge<{ messages: ReplyMessage[] }>("/read", { ...credentials, ouvidoriaEmail: settings.recipient_email });
     const [{ data: candidateData, error: candidateError }, { data: loggedData, error: loggedError }] = await Promise.all([
-      sb.from("ouvidoria_email_queue").select("*, potholes!inner(*)").eq("status", "sent").is("potholes.ouvidoria_protocol", null).limit(200),
+      sb.from("ouvidoria_email_queue").select("*, potholes!inner(*)").in("status", ["sent", "error", "processing"]).is("potholes.ouvidoria_protocol", null).limit(200),
       messages.length
-        ? sb.from("ouvidoria_email_replies").select("message_id, error").in("message_id", messages.map((m) => m.messageId.slice(0, 300)))
+        ? sb.from("ouvidoria_email_replies").select("message_id, error, applied").in("message_id", messages.map((m) => m.messageId.slice(0, 300)))
         : Promise.resolve({ data: [], error: null }),
     ]);
     if (candidateError) throw new Error(candidateError.message);
@@ -319,7 +320,7 @@ export async function syncReplies(options: { force?: boolean } = {}) {
     for (const message of messages.slice(0, 50)) {
       const messageId = message.messageId.slice(0, 300);
       const previous = logged.get(messageId);
-      if (previous && !previous.error) {
+      if (previous?.applied) {
         duplicates += 1;
         processed.push(message.uid);
         continue;
@@ -329,7 +330,8 @@ export async function syncReplies(options: { force?: boolean } = {}) {
       let candidate = candidates.find((q) => q.email_token === extractEmailToken(fullText))
         || candidates.find((q) => q.message_id && relatedIds.includes(q.message_id))
         || null;
-      let protocol = extractLabeledProtocol(fullText);
+      const ownText = stripQuotedReply(message.text);
+      let protocol = extractLabeledProtocol(`${message.subject}\n${ownText}`) || extractLabeledProtocol(fullText);
       let confidence = candidate && protocol ? 1 : 0;
       let error: string | null = null;
       if (!candidate || !protocol) {
@@ -383,7 +385,7 @@ export async function syncReplies(options: { force?: boolean } = {}) {
     if (processed.length) await bridge("/mark-seen", { ...credentials, uids: processed });
     const status = `Leitura concluída: ${applied} protocolo(s) anexado(s), ${unmatched} sem aplicação, ${duplicates} já processada(s)${errors ? `, ${errors} erro(s)` : ""}.`;
     await sb.from("ouvidoria_settings").update({ last_sync_at: new Date().toISOString(), last_sync_status: status.slice(0, 500) }).eq("id", true);
-    return { read: messages.length, applied, unmatched, duplicates, errors };
+    return { read: messages.length, candidates: candidates.length, applied, unmatched, duplicates, errors };
   } catch (cause) {
     const message = (cause instanceof Error ? cause.message : "Falha ao ler a caixa.").slice(0, 500);
     await sb.from("ouvidoria_settings").update({ last_sync_at: new Date().toISOString(), last_sync_status: `Falha: ${message}`.slice(0, 500) }).eq("id", true);

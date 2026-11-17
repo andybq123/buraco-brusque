@@ -87,3 +87,16 @@ describe("e-mail da Ouvidoria", () => {
     expect(shouldSkipReplySync("2026-11-16T23:42:00Z", "Falha: ponte indisponível", 60, now)).toBe(false);
   });
 });
+
+describe("leitura da resposta da Ouvidoria", () => {
+  it("ignora o texto citado do e-mail original e pega o protocolo da resposta", async () => {
+    const { stripQuotedReply, extractLabeledProtocol } = await import("@/lib/ouvidoria-email");
+    const reply = "Segue o protocolo 2026/98765\n\nEm seg., 16 de nov. de 2026 22:00, De Olho na Rua escreveu:\n> Solicitamos que o número de protocolo seja informado em resposta";
+    expect(stripQuotedReply(reply)).toBe("Segue o protocolo 2026/98765");
+    expect(extractLabeledProtocol(reply)).toBe("2026/98765");
+  });
+  it("não aceita palavra do texto citado como protocolo", async () => {
+    const { extractLabeledProtocol } = await import("@/lib/ouvidoria-email");
+    expect(extractLabeledProtocol("> Solicitamos que o número de protocolo seja informado")).toBeNull();
+  });
+});
