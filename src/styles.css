@@ -231,3 +231,10 @@ input, select, textarea { font-size: 16px !important; }
   color: var(--secondary-foreground); box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
   backdrop-filter: blur(8px);
 }
+
+/* Grupo de pinos quando o mapa está afastado */
+.pin-group {
+  width: 40px; height: 40px; border-radius: 9999px; display: grid; place-items: center;
+  background: var(--primary); color: var(--primary-foreground); font: 800 14px/1 var(--font-sans);
+  border: 3px solid var(--secondary); box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+}

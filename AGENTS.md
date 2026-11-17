@@ -43,3 +43,4 @@ use the editor.
 
 - Keep Ouvidoria request composition browser-safe in `src/lib/ouvidoria.ts` for the email pipeline; do not reintroduce the retired bookmarklet integration. This preserves email delivery without coupling it to an external form.
 - Ouvidoria sending backfills open, unprotocolled, unsent legacy reports using conflict-safe queue inserts; private photos are downloaded server-side and forwarded as validated base64 attachments to the VPS bridge, so historical sends remain idempotent and storage stays private.
+- MapLibre (vector layers) is dynamically imported only when a vector layer is chosen; the city mask draws a simplified polygon (`src/lib/simplify.ts`) while validation uses the real one; markers group below zoom 15. Keeps the public map light.

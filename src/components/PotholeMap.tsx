@@ -1,14 +1,12 @@
 import { MapContainer, Marker, Polygon, Popup, useMap, useMapEvents } from "react-leaflet";
 import { BRUSQUE_POLYGON } from "@/lib/brusque-boundary";
+import { groupPoints } from "@/lib/simplify";
 import bonequinho from "@/assets/mascote.webp";
-import pinoPoste from "@/assets/pino-poste.png";
-import pinoBuraco from "@/assets/pino-buraco.png";
+import pinoPoste from "@/assets/pino-poste.webp";
+import pinoBuraco from "@/assets/pino-buraco.webp";
 import "leaflet/dist/leaflet.css";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { setWorkerUrl } from "maplibre-gl";
 import L from "leaflet";
-import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
+import { simplifyRing } from "@/lib/simplify";
 import { Check, Layers } from "lucide-react";
 import {
   hasWebGL,
@@ -20,7 +18,20 @@ import {
   type MapLayerId,
 } from "@/lib/map-layers";
 
-setWorkerUrl(workerUrl);
+/** O motor das camadas desenhadas (~800 KB) só é baixado quando alguém escolhe Ruas/Claro/Escuro. */
+let glLoader: Promise<typeof import("@maplibre/maplibre-gl-leaflet")> | null = null;
+function loadGL() {
+  glLoader ??= (async () => {
+    const [ml, worker] = await Promise.all([
+      import("maplibre-gl"),
+      import("maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url"),
+      import("maplibre-gl/dist/maplibre-gl.css"),
+    ]);
+    ml.setWorkerUrl(worker.default);
+    return import("@maplibre/maplibre-gl-leaflet");
+  })();
+  return glLoader;
+}
 
 const MAPBOX_ATTR =
   '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -36,8 +47,10 @@ function BaseLayer({ layer }: { layer: MapLayerId }) {
     if (layer === "satelite" && mbToken) {
       // Mapbox satélite com nomes de ruas
       const tiles = L.tileLayer(
-        `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`,
+        `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}${window.devicePixelRatio > 1.5 ? "@2x" : ""}?access_token=${mbToken}`,
         {
+          keepBuffer: 1,
+          updateWhenIdle: true,
           tileSize: 512,
           zoomOffset: -1,
           maxZoom: 20,
@@ -58,14 +71,20 @@ function BaseLayer({ layer }: { layer: MapLayerId }) {
         map.removeLayer(tiles);
       };
     }
-    const gl = maplibreGL({
-      style: `https://tiles.openfreemap.org/styles/${openFreeMapStyle(layer)}`,
-      attributionControl: false,
-    } as never);
-    gl.addTo(map);
-    map.attributionControl?.addAttribution(OFM_ATTR);
+    let gl: L.Layer | null = null;
+    let alive = true;
+    void loadGL().then(({ maplibreGL }) => {
+      if (!alive) return;
+      gl = maplibreGL({
+        style: `https://tiles.openfreemap.org/styles/${openFreeMapStyle(layer)}`,
+        attributionControl: false,
+      } as never);
+      gl.addTo(map);
+      map.attributionControl?.addAttribution(OFM_ATTR);
+    });
     return () => {
-      map.removeLayer(gl);
+      alive = false;
+      if (gl) map.removeLayer(gl);
     };
   }, [map, layer]);
   return null;
@@ -76,12 +95,15 @@ import { BRUSQUE_BOUNDS, BRUSQUE_CENTER, isInsideBrusque } from "@/lib/potholes"
 const WORLD: [number, number][] = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
 const MAX_BOUNDS = L.latLngBounds([BRUSQUE_BOUNDS.minLat - 0.03, BRUSQUE_BOUNDS.minLng - 0.04], [BRUSQUE_BOUNDS.maxLat + 0.03, BRUSQUE_BOUNDS.maxLng + 0.04]);
 
+// Só para desenhar: contorno com menos pontos. A validação continua usando o contorno real.
+const DRAW_POLYGON = simplifyRing(BRUSQUE_POLYGON, 0.0002);
+
 /** Escurece tudo fora de Brusque e desenha a divisa. */
 function CityMask() {
   return (
     <>
-      <Polygon positions={[WORLD, BRUSQUE_POLYGON]} interactive={false} pathOptions={{ stroke: false, fillColor: "#0b0b0b", fillOpacity: 0.72 }} />
-      <Polygon positions={BRUSQUE_POLYGON} interactive={false} pathOptions={{ color: "#ffd60a", weight: 3, dashArray: "8 6", fill: false }} />
+      <Polygon positions={[WORLD, DRAW_POLYGON]} interactive={false} pathOptions={{ stroke: false, fillColor: "#0b0b0b", fillOpacity: 0.72 }} />
+      <Polygon positions={DRAW_POLYGON} interactive={false} pathOptions={{ color: "#ffd60a", weight: 3, dashArray: "8 6", fill: false }} />
     </>
   );
 }
@@ -282,18 +304,7 @@ export default function PotholeMap({
       <BaseLayer layer={layer} />
       <CityMask />
       <FlyTo target={focus ?? null} />
-      {points.map((p) => (
-        <Marker
-          key={p.id}
-          ref={(m) => { if (m && openId === p.id && opened.current !== p.id) { opened.current = p.id; setTimeout(() => m.openPopup(), 900); } }}
-          position={[p.lat, p.lng]}
-          icon={potholeIcon(p.status, p.danger, p.kind, p.protocol)}
-          opacity={placing ? 0.6 : 1}
-          eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
-        >
-          {p.popup && !placing && <Popup>{p.popup}</Popup>}
-        </Marker>
-      ))}
+      <Points points={points} openId={openId} opened={opened} onSelect={onSelect} placing={!!placing} />
       {placing && <Placer pos={placing.pos} onMove={placing.onMove} />}
       <LayerSwitcher
         layer={layer}
@@ -303,5 +314,59 @@ export default function PotholeMap({
         }}
       />
     </MapContainer>
+  );
+}
+
+const groupIconCache = new Map<number, L.DivIcon>();
+function groupIcon(n: number) {
+  let ic = groupIconCache.get(n);
+  if (!ic) {
+    ic = L.divIcon({ className: "", html: `<div class="pin-group">${n}</div>`, iconSize: [40, 40], iconAnchor: [20, 20] });
+    groupIconCache.set(n, ic);
+  }
+  return ic;
+}
+
+/** Afastado, junta pinos próximos numa bolinha com a quantidade; perto, mostra cada pino. */
+function Points({ points, openId, opened, onSelect, placing }: {
+  points: MapPoint[]; openId?: string | null | undefined; opened: { current: string | null };
+  onSelect?: ((id: string) => void) | undefined; placing: boolean;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+  const groups = useMemo(() => (zoom >= 15 ? null : groupPoints(points, 0.12 / 2 ** (zoom - 12))), [points, zoom]);
+  if (groups) {
+    return (
+      <>
+        {groups.map((g) =>
+          g.items.length === 1 ? (
+            <OnePoint key={g.items[0]!.id} p={g.items[0]!} {...{ openId, opened, onSelect, placing }} />
+          ) : (
+            <Marker key={g.items.map((i) => i.id).join(",")} position={[g.lat, g.lng]} icon={groupIcon(g.items.length)}
+              opacity={placing ? 0.6 : 1}
+              eventHandlers={{ click: () => map.flyTo([g.lat, g.lng], Math.min(zoom + 2, 17)) }} />
+          ),
+        )}
+      </>
+    );
+  }
+  return <>{points.map((p) => <OnePoint key={p.id} p={p} {...{ openId, opened, onSelect, placing }} />)}</>;
+}
+
+function OnePoint({ p, openId, opened, onSelect, placing }: {
+  p: MapPoint; openId?: string | null | undefined; opened: { current: string | null };
+  onSelect?: ((id: string) => void) | undefined; placing: boolean;
+}) {
+  return (
+        <Marker
+          ref={(m) => { if (m && openId === p.id && opened.current !== p.id) { opened.current = p.id; setTimeout(() => m.openPopup(), 900); } }}
+          position={[p.lat, p.lng]}
+          icon={potholeIcon(p.status, p.danger, p.kind, p.protocol)}
+          opacity={placing ? 0.6 : 1}
+          eventHandlers={onSelect ? { click: () => onSelect(p.id) } : {}}
+        >
+          {p.popup && !placing && <Popup>{p.popup}</Popup>}
+        </Marker>
   );
 }
