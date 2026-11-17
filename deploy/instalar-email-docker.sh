@@ -398,6 +398,17 @@ Persistent=true
 WantedBy=timers.target
 EOF_TIMER
 chmod 755 /usr/local/bin/de-olho-email-reparar /usr/local/sbin/de-olho-email-instalar /usr/local/sbin/de-olho-email-sincronizar 2>/dev/null || true
+
+# Liga o reparo do e-mail ao atualizar.sh (pausa o reparo automatico durante a atualizacao e religa no fim).
+for UPD in /root/*/buraco-deploy/atualizar.sh /root/buraco-deploy/atualizar.sh "$APP_DIR/atualizar.sh"; do
+  [ -f "$UPD" ] || continue
+  grep -q "DE-OLHO-EMAIL-HOOK" "$UPD" && continue
+  sed -i '1a\
+# DE-OLHO-EMAIL-HOOK: mantem o e-mail da Ouvidoria ligado apos cada atualizacao\
+systemctl stop de-olho-email-sync.timer 2>/dev/null || true\
+trap '"'"'command -v de-olho-email-reparar >/dev/null \&\& de-olho-email-reparar; systemctl start de-olho-email-sync.timer 2>/dev/null || true'"'"' EXIT' "$UPD"
+  echo "atualizar.sh ajustado: $UPD"
+done
 command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }
 systemctl daemon-reload
 systemctl enable --now de-olho-email-sync.timer
