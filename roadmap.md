@@ -15,3 +15,5 @@
 - [ ] Validar envio, chave de IA e leitura reais na VPS — depende das credenciais e da caixa configuradas pelo usuário.
 
 - [x] Remover o envio por favoritos, mantendo encaminhamento por e-mail e edição do protocolo.
+- [x] Anexar as fotos dos registros aos e-mails da Ouvidoria.
+- [x] Incluir registros antigos não enviados na fila, sem duplicar encaminhamentos.

@@ -29,6 +29,29 @@ export interface OuvidoriaEmailInput extends OuvidoriaInput {
   id: string;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+  contentType: string;
+  encoding: "base64";
+}
+
+export function needsOuvidoriaEmail(p: { status: string; ouvidoria_protocol: string | null; ouvidoria_email_sent_at: string | null }) {
+  return p.status === "aberto" && !p.ouvidoria_protocol && !p.ouvidoria_email_sent_at;
+}
+
+export function photoAttachment(number: number, index: number, bytes: Uint8Array): EmailAttachment {
+  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const png = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  const webp = String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  if (!jpeg && !png && !webp) throw new Error("Foto em formato inválido para anexar ao e-mail.");
+  if (bytes.length > 8 * 1024 * 1024) throw new Error("Foto excede o limite de 8 MB por anexo.");
+  const extension = jpeg ? "jpg" : png ? "png" : "webp";
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return { filename: `registro-${number}-foto-${index + 1}.${extension}`, content: btoa(binary), contentType: `image/${jpeg ? "jpeg" : extension}`, encoding: "base64" };
+}
+
 export function googleMapsLink(lat: number, lng: number) {
   return `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
 }

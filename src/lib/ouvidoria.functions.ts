@@ -151,9 +151,9 @@ export const sendOuvidoriaPending = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const server = await import("./ouvidoria-mail.server");
-    const { error } = await (await import("@/integrations/supabase/client.server")).supabaseAdmin.from("ouvidoria_email_queue").update({ status: "pending", available_at: new Date().toISOString(), last_error: null }).eq("status", "error");
+    const { error } = await (await import("@/integrations/supabase/client.server")).supabaseAdmin.from("ouvidoria_email_queue").update({ status: "pending", attempts: 0, available_at: new Date().toISOString(), last_error: null }).eq("status", "error");
     if (error) throw new Error(error.message);
-    return server.sendPending({ force: true, limit: 20 });
+    return server.sendPending({ force: true, limit: 1 });
   });
 
 export const syncOuvidoriaReplies = createServerFn({ method: "POST" })

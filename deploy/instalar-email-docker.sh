@@ -46,7 +46,7 @@ import { simpleParser } from "mailparser";
 const HOST = process.env.MAIL_BRIDGE_HOST || "127.0.0.1";
 const PORT = Number(process.env.MAIL_BRIDGE_PORT || 3001);
 const TOKEN = process.env.MAIL_BRIDGE_TOKEN || "";
-const MAX_BODY = 1_000_000;
+const MAX_BODY = 21_000_000;
 if (!TOKEN) throw new Error("Defina MAIL_BRIDGE_TOKEN antes de iniciar a ponte de e-mail.");
 
 const json = (res, status, value) => {
@@ -191,6 +191,12 @@ async function testConnection(input) {
 async function send(input) {
   const to = email(input.to);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new Error("Destinatário inválido.");
+  const attachments = (Array.isArray(input.attachments) ? input.attachments : []).map((a) => {
+    if (!/^image\/(jpeg|png|webp)$/.test(a.contentType) || a.encoding !== "base64" || typeof a.content !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(a.content)) throw new Error("Anexo de imagem inválido.");
+    const content = Buffer.from(a.content, "base64");
+    if (!content.length || content.length > 8 * 1024 * 1024) throw new Error("Tamanho de anexo inválido.");
+    return { filename: text(a.filename, 100).replace(/[^a-zA-Z0-9._-]/g, "_"), content, contentType: a.contentType };
+  });
   const result = await smtp(input).sendMail({
     from: { name: text(input.senderName || "De Olho na Rua", 100), address: email(input.email) },
     to,
@@ -198,6 +204,7 @@ async function send(input) {
     subject: text(input.subject, 180),
     text: text(input.text, 40_000),
     headers: { "X-De-Olho-Token": text(input.token, 40) },
+    attachments,
   });
   return { messageId: result.messageId || null };
 }

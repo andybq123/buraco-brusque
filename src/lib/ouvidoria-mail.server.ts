@@ -10,6 +10,8 @@ import {
   makeEmailToken,
   parseAiProtocolResult,
   shouldSkipReplySync,
+  needsOuvidoriaEmail,
+  photoAttachment,
   type AiProvider,
   type MailConnection,
   type OuvidoriaEmailInput,
@@ -122,6 +124,8 @@ export async function sendPending(options: { limit?: number; potholeId?: string;
   if (!settings.auto_send && !options.force) return { skipped: "auto_send_off", sent: 0 };
   const credentials = mailCredentials(settings);
   const sb = await admin();
+  // Include legacy reports without overwriting a sent/in-flight queue entry.
+  if (!options.potholeId) await enqueueUnsentReports();
   const now = new Date();
   let query = sb.from("ouvidoria_email_queue")
     .select("*, potholes!inner(*)")
@@ -130,6 +134,7 @@ export async function sendPending(options: { limit?: number; potholeId?: string;
     .lt("attempts", 5)
     .eq("potholes.status", "aberto")
     .is("potholes.ouvidoria_protocol", null)
+    .is("potholes.ouvidoria_email_sent_at", null)
     .order("created_at", { ascending: true })
     .limit(options.limit ?? 5);
   if (options.potholeId) query = query.eq("pothole_id", options.potholeId);
@@ -148,6 +153,16 @@ export async function sendPending(options: { limit?: number; potholeId?: string;
     if (!claimed) continue;
     try {
       const message = buildOuvidoriaEmail(item.potholes as unknown as OuvidoriaEmailInput, item.email_token, origin);
+      const attachments = [];
+      let totalBytes = 0;
+      for (const [index, path] of [...new Set(item.potholes.photos ?? [])].entries()) {
+        const { data: photo, error: photoError } = await sb.storage.from("fotos").download(path);
+        if (photoError || !photo) throw new Error(`Não foi possível anexar a foto ${index + 1}. O envio ficará pendente para nova tentativa.`);
+        const bytes = new Uint8Array(await photo.arrayBuffer());
+        totalBytes += bytes.length;
+        if (totalBytes > 14 * 1024 * 1024) throw new Error("As fotos excedem 14 MB por e-mail. Revise os anexos antes de tentar novamente.");
+        attachments.push(photoAttachment(item.potholes.number, index, bytes));
+      }
       const result = await bridge<{ messageId: string | null }>("/send", {
         ...credentials,
         senderName: settings.sender_name,
@@ -155,6 +170,7 @@ export async function sendPending(options: { limit?: number; potholeId?: string;
         token: item.email_token,
         subject: message.subject,
         text: message.text,
+        attachments,
       });
       const sentAt = new Date().toISOString();
       const { error: sentError } = await sb.from("ouvidoria_email_queue").update({ status: "sent", sent_at: sentAt, message_id: result.messageId, last_error: null }).eq("id", item.id);
@@ -171,7 +187,31 @@ export async function sendPending(options: { limit?: number; potholeId?: string;
       }).eq("id", item.id);
     }
   }
-  return { sent, attempted: data?.length ?? 0, errors };
+  const { count, error: countError } = await sb.from("ouvidoria_email_queue")
+    .select("id, potholes!inner(id)", { count: "exact", head: true })
+    .in("status", ["pending", "error", "processing"])
+    .eq("potholes.status", "aberto").is("potholes.ouvidoria_protocol", null).is("potholes.ouvidoria_email_sent_at", null);
+  if (countError) throw new Error(countError.message);
+  return { sent, attempted: data?.length ?? 0, errors, remaining: count ?? 0 };
+}
+
+export async function enqueueUnsentReports() {
+  const sb = await admin();
+  let offset = 0;
+  while (true) {
+    const { data, error } = await sb.from("potholes")
+      .select("id, number, status, ouvidoria_protocol, ouvidoria_email_sent_at")
+      .eq("status", "aberto").is("ouvidoria_protocol", null).is("ouvidoria_email_sent_at", null)
+      .order("id").range(offset, offset + 499);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []).filter(needsOuvidoriaEmail).map((p) => ({ pothole_id: p.id, email_token: makeEmailToken(p.number) }));
+    if (rows.length) {
+      const { error: queueError } = await sb.from("ouvidoria_email_queue").upsert(rows, { onConflict: "pothole_id", ignoreDuplicates: true });
+      if (queueError) throw new Error(queueError.message);
+    }
+    if ((data?.length ?? 0) < 500) break;
+    offset += 500;
+  }
 }
 
 interface ReplyMessage {

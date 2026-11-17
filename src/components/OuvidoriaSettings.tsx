@@ -168,7 +168,17 @@ export function OuvidoriaSettings() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
           <div><h2 className="text-lg">Envios e respostas</h2><p className="text-sm text-muted-foreground">Novas tentativas acontecem a cada 5 minutos; as respostas respeitam o intervalo definido acima.</p></div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("send", async () => { const r = await sendPending({}); if (!r.sent && r.errors?.length) throw new Error(r.errors[0]); }, "Envio dos registros pendentes concluído.")}><Send className="mr-1 h-4 w-4" />Enviar pendentes</Button>
+            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("send", async () => {
+              let total = 0;
+              while (true) {
+                const r = await sendPending({});
+                if (r.skipped) throw new Error("Salve o e-mail, a senha e o destinatário antes de enviar.");
+                total += r.sent;
+                if (r.errors?.length) throw new Error(`${total} e-mail(s) enviado(s). ${r.errors[0]}`);
+                if (!r.remaining) { toast.success(`${total} e-mail(s) enviado(s), incluindo registros antigos ainda abertos.`); break; }
+                if (!r.attempted) { toast.info(`${total} e-mail(s) enviado(s); ${r.remaining} aguardando uma tentativa em andamento ou o próximo horário.`); break; }
+              }
+            }, "")}><Send className="mr-1 h-4 w-4" />{busy === "send" ? "Enviando…" : "Enviar todos os pendentes"}</Button>
             <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void run("sync", async () => { const r = await syncReplies({}); const x = r as { read?: number; applied?: number; duplicates?: number; unmatched?: number; skipped?: string };
               if (x.skipped === "configure_email") toast.warning("Salve o e-mail e a senha antes de verificar.");
               else if (!x.read) toast.warning("Nenhuma resposta com o código DOR-… foi encontrada na caixa de entrada (últimos 45 dias).");
